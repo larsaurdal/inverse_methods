@@ -9,13 +9,15 @@ mpl.rcParams['legend.fontsize'] = 'medium'
 #  1d image deblurring inverse problem with Dirichlet boundary conditions.
 #
 
-xi         = 0
-xf         = 1
-n          = 80
-sig        = 0.05
-A_ftn      = gaussian_kernel
-x_true_ftn = wacky_thing
-err_lvl    = 2.0
+xi         = 0                  # begin of domain
+xf         = 1                  # end of domain
+n          = 80                 # number of nodes
+sig        = 0.05               # desired SD of noise
+A_ftn      = gaussian_kernel    # design matrix
+x_true_ftn = wacky_thing        # true solution
+err_lvl    = 2.0                # error level parameter
+
+# object encapsulating the entire evaluative process on this system :
 s          = inverse_system(xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl)
 
 #===============================================================================
