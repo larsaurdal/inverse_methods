@@ -90,7 +90,7 @@ class inverse_system(object):
     UTb   = self.UTb
     n     = self.n
     sigma = self.sigma
-    return (+ sum( a**2 * UTb**2 / (dS2 + a)**2 ) - n*sigma**2)**2
+    return (sum( a**2 * UTb**2 / (dS2 + a)**2 ) - n*sigma**2)**2
   
   def GCV(self, a):
     """
@@ -99,7 +99,7 @@ class inverse_system(object):
     dS2   = self.S**2  
     UTb   = self.UTb
     n     = self.n
-    return sum( a**2*UTb**2 / (dS2 + a)**2) / (n - sum(dS2 / (dS2 + a)))**2
+    return sum( a**2 * UTb**2 / (dS2 + a)**2) / (n - sum(dS2 / (dS2 + a)))**2
   
   def MSE(self, a):
     """
@@ -391,6 +391,16 @@ def PSF(t):
   
   # Create the normalized PSF
   return kernel / (h * sum(kernel))
+
+def PSF2(t):
+  kernel  = zeros(len(t))
+  low     = (-1/10. <= t) & (t <= 0)
+  high    = (0      <  t) & (t <  1/10.)
+  kernel[low]  =  100*t[low]  + 10
+  kernel[high] = -100*t[high] + 10
+  return kernel
+
+            
 
 def gaussian_kernel(t):
   """
