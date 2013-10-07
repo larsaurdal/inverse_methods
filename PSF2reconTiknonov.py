@@ -21,7 +21,7 @@ s          = inverse_system(xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl)
 #===============================================================================
 
 # query the user for a xfilter choice :
-xfilt, alpha, tit = s.get_xfilt_choice()
+xfilt, alpha, tit = s.get_xfilt_choice(1e-10, 1)
 
 # plotting
 fig = figure(figsize=(13,9))

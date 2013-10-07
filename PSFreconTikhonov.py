@@ -21,7 +21,7 @@ s          = inverse_system(xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl)
 #===============================================================================
 
 # query the user for a xfilter choice :
-xfilt, alpha, tit = s.get_xfilt_choice()
+xfilt, alpha, tit = s.get_xfilt_choice(1e-10, 1)
 
 # plotting
 fig = figure(figsize=(13,9))
@@ -35,7 +35,7 @@ s.plot_true(ax1)
 s.plot_filt(ax2, xfilt, alpha, tit)
 
 # range for plotting errors :
-rng = logspace(log10(1e-5), log10(1), 1000)
+rng = logspace(log10(1e-10), log10(1), 1000)
 
 # get error functions over range :
 fs, MSEs, UPREs, DP2s, GCVs, Lcs = s.calc_errors(rng)
@@ -51,7 +51,7 @@ s.plot_errors(ax3, rng, fs, MSEs)
 xfilt = s.get_xfilt(a_minf)
 s.plot_filt(ax4, xfilt, a_minf, 'Relative Error')
 
-savefig('../doc/images/prb25psf.png', dpi=300)
+#savefig('../doc/images/prb25psf.png', dpi=300)
 show()
 
 # plot all the errors on a loglog axis :
@@ -61,5 +61,5 @@ ax  = fig.add_subplot(111)
 errors = [UPREs, DP2s, GCVs, Lcs]
 tits   = ['UPRE', 'DP2', 'GCV', 'L-curve']
 s.plot_error_list(ax, rng, errors, tits)
-savefig('../doc/images/prb25psf_error.png', dpi=300)
+#savefig('../doc/images/prb25psf_error.png', dpi=300)
 show()

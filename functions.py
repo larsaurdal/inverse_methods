@@ -11,7 +11,7 @@ class inverse_system(object):
     n       = float(n)
     omega   = xf - xi
     h       = omega/n
-    t       = arange(xi + h/2, xf-h/2, h)
+    t       = arange(xi, xf, h)
 
     # A discritization :
     A       = A_ftn(t)
@@ -20,7 +20,7 @@ class inverse_system(object):
     x_true  = x_true_ftn(t)
     Ax      = dot(A, x_true)
     sigma   = err_lvl/100 * norm(Ax) / sqrt(n)
-    eta     = sigma * randn(n-1, 1)
+    eta     = sigma * randn(n, 1)
     b       = Ax + eta.T[0]
     x_ls    = solve(A,b)
    
@@ -86,7 +86,7 @@ class inverse_system(object):
     """
     Discrepancy Principe curve.
     """
-    dS2   = self.S**2  
+    dS2   = self.S**2
     UTb   = self.UTb
     n     = self.n
     sigma = self.sigma
@@ -96,7 +96,7 @@ class inverse_system(object):
     """
     Generalized Cross Validation curve.
     """
-    dS2   = self.S**2  
+    dS2   = self.S**2
     UTb   = self.UTb
     n     = self.n
     return sum( a**2 * UTb**2 / (dS2 + a)**2) / (n - sum(dS2 / (dS2 + a)))**2
@@ -158,7 +158,7 @@ class inverse_system(object):
     a_min = rng[idx]
     return idx, a_min
 
-  def get_xfilt_choice(self):
+  def get_xfilt_choice(self, xi, xf):
     """
     present a list of alpha-choosing optimization choices and give 
     the filtered solution back.
@@ -183,7 +183,7 @@ class inverse_system(object):
       RegParam_fn = lambda a : self.Lcurve(a)
       tit = 'L-curve'
     
-    if param_choice != 0: alpha = fminbound(RegParam_fn, 0, 1)
+    if param_choice != 0: alpha = fminbound(RegParam_fn, xi, xf)
     
     # Now compute the regularized solution for TSVD
     S      = self.S
@@ -385,9 +385,9 @@ def PSF(t):
   mid    = int(round(len(t)/2))
   kernel = zeros(len(t))
   
-  kernel[:mid]   = exp(-(t[:len(t)/2]-h/2)**2 / sig1**2)
-  kernel[mid+1:] = exp(-(t[:len(t)/2]-h/2)**2 / sig2**2)
-  kernel[:mid+1] = kernel[:mid+1][::-1]
+  kernel[:mid] = exp(-(t[:mid])**2 / sig1**2)
+  kernel[mid:] = exp(-(t[:mid])**2 / sig2**2)
+  kernel[:mid] = kernel[:mid][::-1]
   
   # Create the normalized PSF
   return kernel / (h * sum(kernel))
