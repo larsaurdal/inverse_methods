@@ -4,7 +4,7 @@ from scipy.linalg   import toeplitz
 
 class inverse_system(object):
 
-  def __init__(self, xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl, rng): 
+  def __init__(self, xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl): 
     """
     class representing a system we wish to invert.
     """
@@ -30,7 +30,7 @@ class inverse_system(object):
     # by default, filter by Tikhonov parameterization
     self.filt_type = 'Tikhonov'
     
-    self.rng     = rng
+    self.rng     = arange(0, 1, 0.1)
     self.omega   = omega 
     self.n       = n
     self.h       = h
@@ -47,15 +47,21 @@ class inverse_system(object):
     self.V       = V
     self.UTb     = UTb
 
-  def set_filt_type(self, filt_type):
+  def set_filt_type(self, filt_type, rng=None):
     if filt_type not in ['TSVD', 'Tikhonov']:
       print 'please choose filt_type to be either "TSVD" or "Tikhonov".'
     else:
+      if filt_type == 'TSVD': 
+        self.rng = range(int(self.n))
+      else: 
+        if rng == None:
+          print "specify a range for Tikhonov regulariztion"
+          exit(1)
+        else:
+          self.rng = rng
       self.filt_type = filt_type
+
  
-  def set_err_range(self, rng):
-    self.rng = rng
-  
   def Lcurve(self, a):
     """
     Compute minus the curvature of the L-curve
@@ -178,7 +184,7 @@ class inverse_system(object):
     UPREs = array([])
     DP2s  = array([])
     GCVs  = array([])
-    if filt_type != 'TSVD': Lcs   = []
+    if filt_type != 'TSVD': Lcs = array([])
     for alpha in self.rng:
       fs    = append(fs,    self.relative_error(alpha))
       MSEs  = append(MSEs,  self.MSE(alpha))
@@ -191,13 +197,7 @@ class inverse_system(object):
     self.UPREs = UPREs
     self.DP2s  = DP2s 
     self.GCVs  = GCVs 
-    
-    if filt_type == 'TSVD':
-      self.errors   = [UPREs, DP2s, GCVs]
-      self.err_tits = ['UPRE', 'DP2', 'GCV']
-    else:
-      self.errors   = [UPREs, DP2s, GCVs, Lcs]
-      self.err_tits = ['UPRE', 'DP2', 'GCV', 'L-curve']
+    if filt_type != 'TSVD': self.Lcs = Lcs
 
   def find_min(self, ftn):
     """
@@ -276,6 +276,31 @@ class inverse_system(object):
     ax.plot(t, x_filt, 'r-', label=r'$x_{filt}$', lw=1.5)
     ax.set_title(st % alpha)
     ax.set_xlabel(r'$t$')
+    ax.set_ylabel(r'$x$')
+    leg = ax.legend(loc='upper left')
+    leg.get_frame().set_alpha(0.5)
+    ax.grid()
+  
+  def plot_two_filt(self, ax, x_filts, alphas, tits):
+    """
+    plot the filtered solution.
+    """
+    if self.filt_type == 'Tikhonov':
+      st1 = tits[0] + r', $\alpha = %.2E$'
+      st2 = tits[1] + r', $\alpha = %.2E$'
+    elif self.filt_type == 'TSVD':
+      st1 = tits[0] + r', $\alpha = %.f$'
+      st2 = tits[1] + r', $\alpha = %.f$'
+    
+    t      = self.t
+    x_true = self.x_true
+
+    ax.plot(t, x_true,     'k-', label='true',          lw=1.5)
+    ax.plot(t, x_filts[0], 'r-', label=st1 % alphas[0], lw=1.5)
+    ax.plot(t, x_filts[1], 'g-', label=st2 % alphas[1], lw=1.5)
+    ax.set_title(r'Filtered Solutions')
+    ax.set_xlabel(r'$t$')
+    ax.set_ylabel(r'$x$')
     leg = ax.legend(loc='upper left')
     leg.get_frame().set_alpha(0.5)
     ax.grid()
@@ -291,6 +316,8 @@ class inverse_system(object):
     ax.plot(t, x_true, 'k-', label='true', lw=1.5)
     ax.plot(t, x_ls,   'r-', label=r'$\vec{x}_{LS}$', lw=1.5)
     ax.set_title(r'Noisy $A\vec{x} = \vec{b}$')
+    ax.set_xlabel(r'$t$')
+    ax.set_ylabel(r'$x$')
     leg = ax.legend(loc='upper left')
     leg.get_frame().set_alpha(0.5)
     ax.grid()
@@ -307,11 +334,12 @@ class inverse_system(object):
     ax.plot(t, b,      'ro', label='blurred')
     ax.set_title(r'True')
     ax.set_xlabel(r'$t$')
+    ax.set_ylabel(r'$x$')
     leg = ax.legend(loc='upper left')
     leg.get_frame().set_alpha(0.5)
     ax.grid()
   
-  def plot_errors(self, ax):
+  def plot_errors(self, ax, err_list, alphas, idxs, err_tits):
     """
     plot the errors :
     """
@@ -319,26 +347,29 @@ class inverse_system(object):
     MSEs = self.MSEs
 
     # find index of minimum :
-    rng    = self.rng
-    idxf   = where(fs == min(fs))[0][0]
-    idxm   = where(MSEs == min(MSEs))[0][0]
-    a_minf = rng[idxf]
-    a_minm = rng[idxm]
+    rng  = self.rng
     
     if self.filt_type == 'Tikhonov':
-      ls      = '-'
-      re_lab  = r'R.E.: %.2E'
-      mse_lab = r'$MSE$: %.2E'
+      ls    = '-'
+      lab1  = r'' + err_tits[0] + ': %.2E'
+      lab2  = r'' + err_tits[1] + ': %.2E'
+      ax.loglog(rng, err_list[0],    ls, lw=2.0, label=lab1 % alphas[0])
+      ax.loglog(rng, err_list[1],    ls, lw=2.0, label=lab2 % alphas[1])
+      ax.loglog(alphas[0], err_list[0][idxs[0]], 'd', color='#3d0057', 
+                markersize=10, label=r'min{$\alpha$}')
+      ax.loglog(alphas[1], err_list[1][idxs[1]], 'd', color='#3d0057', 
+                markersize=10)
     elif self.filt_type == 'TSVD':
-      ls      = 'o'
-      re_lab  = r'R.E.: %.f'
-      mse_lab = r'$MSE$: %.f'
+      ls    = 'o'
+      lab1  = r'' + err_tits[0] + ': %.f'
+      lab2  = r'' + err_tits[1] + ': %.f'
+      ax.semilogy(rng, err_list[0],    ls, lw=2.0, label=lab1 % alphas[0])
+      ax.semilogy(rng, err_list[1],    ls, lw=2.0, label=lab2 % alphas[1])
+      ax.semilogy(alphas[0], err_list[0][idxs[0]], 'd', color='#3d0057', 
+                  markersize=10, label=r'min{$\alpha$}')
+      ax.semilogy(alphas[1], err_list[1][idxs[1]], 'd', color='#3d0057', 
+                  markersize=10)
 
-    ax.loglog(rng,    fs,         ls, lw=2.0, label=re_lab % a_minf)
-    ax.loglog(rng,    MSEs,       ls, lw=2.0, label=mse_lab % a_minm)
-    ax.loglog(a_minm, MSEs[idxm], 'd', color='#3d0057', markersize=10,
-              label=r'min{$\alpha$}')
-    ax.loglog(a_minf, fs[idxf],   'd', color='#3d0057', markersize=10)
     ax.set_xlabel(r'$\alpha$')
     ax.set_ylabel(r'ERROR$(\alpha)$')
     ax.set_title(r'Errors')
@@ -346,36 +377,49 @@ class inverse_system(object):
     leg.get_frame().set_alpha(0.5)
     ax.grid()
   
-  def plot_error_list(self, ax):
+  def plot_all_errors(self, ax):
     """
     plot a list of error values <errors> over range <rng> with 
     corresponding titles <tits> to axes object <ax>.
     """
-    errors = self.errors
-    tits   = self.err_tits
     rng    = self.rng
 
     if self.filt_type == 'Tikhonov':
-      ls  = '-'
-      fmt = '.2E'
+      ls       = '-'
+      fmt      = '.2E'
+      errors   = [self.fs, self.MSEs, self.UPREs, 
+                  self.DP2s, self.GCVs, self.Lcs]
+      err_tits = ['relative', 'MSE', 'UPRE', 'DP2', 'GCV', 'L-curve']
+      for e, t in zip(errors, err_tits):
+        if t == 'L-curve':
+          idx, a = self.find_min(-e)
+        else:
+          idx, a = self.find_min(e)
+        st = r'' + t + ': %' + fmt
+        ax.loglog(rng, e, ls, lw=2.0, label=st % a)
+        ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
+      leg = ax.legend(loc='lower left')
+      leg.get_frame().set_alpha(0.5)
+    
     elif self.filt_type == 'TSVD':
-      ls  = 'o'
-      fmt = '.f'
-
-    for e, t in zip(errors, tits):
-      if t == 'L-curve':
-        idx, a = self.find_min(-e)
-      else:
-        idx, a = self.find_min(e)
-      st = r'' + t + ': %' + fmt
-      ax.loglog(rng, e, ls, lw=2.0, label=st % a)
-      ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
+      ls       = 'o'
+      fmt      = '.f'
+      errors   = [self.fs, self.MSEs, self.UPREs, self.DP2s, self.GCVs]
+      err_tits = ['relative', 'MSE', 'UPRE', 'DP2', 'GCV']
+      for e, t in zip(errors, err_tits):
+        if t == 'L-curve':
+          idx, a = self.find_min(-e)
+        else:
+          idx, a = self.find_min(e)
+        st = r'' + t + ': %' + fmt
+        ax.semilogy(rng, e, ls, lw=2.0, label=st % a)
+        ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
+      leg = ax.legend(loc='upper right')
+      leg.get_frame().set_alpha(0.5)
    
     ax.set_xlabel(r'$\alpha$')
     ax.set_ylabel(r'ERROR$(\alpha)$')
     ax.set_title(r'Errors')
-    leg = ax.legend(loc='upper left')
-    leg.get_frame().set_alpha(0.5)
     ax.grid()
   
   def plot_U_vectors(self, ax):
