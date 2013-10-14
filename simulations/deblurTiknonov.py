@@ -1,3 +1,7 @@
+import sys
+src_directory = '../src/'
+sys.path.append(src_directory)
+
 from pylab     import *
 from functions import *
 
@@ -53,7 +57,7 @@ s.plot_errors(ax3, rng, fs, MSEs)
 xfilt = s.get_xfilt(a_minf)
 s.plot_filt(ax4, xfilt, a_minf, 'Relative Error')
 
-savefig('../doc/images/prb25deblur.png', dpi=300)
+#savefig('../doc/images/prb25deblur.png', dpi=300)
 show()
 
 # plot all the errors on a loglog axis :
@@ -63,5 +67,5 @@ ax  = fig.add_subplot(111)
 errors = [UPREs, DP2s, GCVs, Lcs]
 tits   = ['UPRE', 'DP2', 'GCV', 'L-curve']
 s.plot_error_list(ax, rng, errors, tits)
-savefig('../doc/images/prb25deblur_error.png', dpi=300)
+#savefig('../doc/images/prb25deblur_error.png', dpi=300)
 show()

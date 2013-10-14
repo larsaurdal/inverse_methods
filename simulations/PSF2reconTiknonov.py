@@ -1,3 +1,7 @@
+import sys
+src_directory = '../src/'
+sys.path.append(src_directory)
+
 from pylab     import *
 from functions import *
 
@@ -14,7 +18,7 @@ xf         = 1
 n          = 80
 sig        = 0.05
 A_ftn      = integral_op
-x_true_ftn = PSF
+x_true_ftn = PSF2
 err_lvl    = 2.0
 s          = inverse_system(xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl)
 
@@ -35,7 +39,7 @@ s.plot_true(ax1)
 s.plot_filt(ax2, xfilt, alpha, tit)
 
 # range for plotting errors :
-rng = logspace(log10(1e-10), log10(1), 1000)
+rng = logspace(log10(1e-10), log10(10), 1000)
 
 # get error functions over range :
 fs, MSEs, UPREs, DP2s, GCVs, Lcs = s.calc_errors(rng)
