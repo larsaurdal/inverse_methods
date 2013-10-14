@@ -4,7 +4,7 @@ from scipy.linalg   import toeplitz
 
 class inverse_system(object):
 
-  def __init__(self, xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl): 
+  def __init__(self, xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl, rng): 
     """
     class representing a system we wish to invert.
     """
@@ -27,6 +27,10 @@ class inverse_system(object):
     U,S,V   = svd(A)
     UTb     = dot(U.T, b)
     
+    # by default, filter by Tikhonov parameterization
+    self.filt_type = 'Tikhonov'
+    
+    self.rng     = rng
     self.omega   = omega 
     self.n       = n
     self.h       = h
@@ -43,6 +47,15 @@ class inverse_system(object):
     self.V       = V
     self.UTb     = UTb
 
+  def set_filt_type(self, filt_type):
+    if filt_type not in ['TSVD', 'Tikhonov']:
+      print 'please choose filt_type to be either "TSVD" or "Tikhonov".'
+    else:
+      self.filt_type = filt_type
+ 
+  def set_err_range(self, rng):
+    self.rng = rng
+  
   def Lcurve(self, a):
     """
     Compute minus the curvature of the L-curve
@@ -76,30 +89,51 @@ class inverse_system(object):
     """
     Unbiased Predictive Rist Estimator curve.
     """
-    dS2   = self.S**2  
     UTb   = self.UTb 
     sigma = self.sigma
-    return + sum( a**2*UTb**2 / (dS2 + a)**2 ) \
-           + 2 * sigma**2 * sum( dS2 / (dS2 + a) )
+    if self.filt_type == 'TSVD':
+      phi_nu     = ones(self.n)
+      phi_nu[a:] = 0.0
+    
+    elif self.filt_type == 'Tikhonov':
+      dS2    = self.S**2
+      phi_nu = dS2 / (dS2 + a)
+    
+    return sum( ((phi_nu - 1)*UTb)**2 + 2*sigma**2*phi_nu )
   
   def DP2(self, a):
     """
     Discrepancy Principe curve.
     """
-    dS2   = self.S**2
-    UTb   = self.UTb
     n     = self.n
+    UTb   = self.UTb 
     sigma = self.sigma
-    return (sum( a**2 * UTb**2 / (dS2 + a)**2 ) - n*sigma**2)**2
+    if self.filt_type == 'TSVD':
+      phi_nu     = ones(self.n)
+      phi_nu[a:] = 0.0
+    
+    elif self.filt_type == 'Tikhonov':
+      dS2    = self.S**2
+      phi_nu = dS2 / (dS2 + a)
+    
+    return (sum( ((phi_nu - 1)*UTb)**2) - n*sigma**2)**2
   
   def GCV(self, a):
     """
     Generalized Cross Validation curve.
     """
-    dS2   = self.S**2
-    UTb   = self.UTb
     n     = self.n
-    return sum( a**2 * UTb**2 / (dS2 + a)**2) / (n - sum(dS2 / (dS2 + a)))**2
+    UTb   = self.UTb 
+    sigma = self.sigma
+    if self.filt_type == 'TSVD':
+      phi_nu     = ones(self.n)
+      phi_nu[a:] = 0.0
+    
+    elif self.filt_type == 'Tikhonov':
+      dS2    = self.S**2
+      phi_nu = dS2 / (dS2 + a)
+    
+    return sum( ((phi_nu - 1)*UTb)**2) / (n - sum(phi_nu))**2
   
   def MSE(self, a):
     """
@@ -109,7 +143,11 @@ class inverse_system(object):
     sigma  = self.sigma
     V      = self.V
     x_true = self.x_true
-    dSfilt = S**2 / (S**2 + a)
+    if self.filt_type == 'Tikhonov':
+      dSfilt = S**2 / (S**2 + a)
+    else:
+      dSfilt     = ones(self.n)
+      dSfilt[a:] = 0.0
     return + sigma**2 * sum( (dSfilt / S)**2 ) \
            + sum( (1 - dSfilt)**2 * dot(V, x_true)**2 )
   
@@ -121,41 +159,52 @@ class inverse_system(object):
     V      = self.V
     UTb    = self.UTb
     x_true = self.x_true
-    dSfilt = S / (S**2 + a)
-    x_filt = dot(V.T, dSfilt * UTb)
+    if self.filt_type == 'Tikhonov':
+      dSfilt = S**2 / (S**2 + a)
+    else:
+      dSfilt     = ones(self.n)
+      dSfilt[a:] = 0.0
+    x_filt = dot(V.T, dSfilt / S * UTb) 
     return norm(x_filt - x_true) / norm(x_true)
   
-  def calc_errors(self, rng):
+  def calc_errors(self):
     """
     calculate all the errors that we have available.
     """
-    fs    = []
-    MSEs  = []
-    UPREs = []
-    DP2s  = []
-    GCVs  = []
-    Lcs   = []
-    for alpha in rng:
-      fs.append(self.relative_error(alpha))
-      MSEs.append(self.MSE(alpha))
-      UPREs.append(self.UPRE(alpha))
-      DP2s.append(self.DP2(alpha))
-      GCVs.append(self.GCV(alpha))
-      Lcs.append(self.Lcurve(alpha))
-    fs     = array(fs)
-    MSEs   = array(MSEs)
-    UPREs  = array(UPREs)
-    DP2s   = array(DP2s)
-    GCVs   = array(GCVs)
-    Lcs    = array(Lcs)
-    return [fs, MSEs, UPREs, DP2s, GCVs, Lcs]
+    filt_type = self.filt_type
 
-  def find_min(self, rng, ftn):
+    fs    = array([])
+    MSEs  = array([])
+    UPREs = array([])
+    DP2s  = array([])
+    GCVs  = array([])
+    if filt_type != 'TSVD': Lcs   = []
+    for alpha in self.rng:
+      fs    = append(fs,    self.relative_error(alpha))
+      MSEs  = append(MSEs,  self.MSE(alpha))
+      UPREs = append(UPREs, self.UPRE(alpha))
+      DP2s  = append(DP2s,  self.DP2(alpha))
+      GCVs  = append(GCVs,  self.GCV(alpha))
+      if filt_type != 'TSVD': Lcs = append(Lcs, self.Lcurve(alpha))
+    self.fs    = fs   
+    self.MSEs  = MSEs 
+    self.UPREs = UPREs
+    self.DP2s  = DP2s 
+    self.GCVs  = GCVs 
+    
+    if filt_type == 'TSVD':
+      self.errors   = [UPREs, DP2s, GCVs]
+      self.err_tits = ['UPRE', 'DP2', 'GCV']
+    else:
+      self.errors   = [UPREs, DP2s, GCVs, Lcs]
+      self.err_tits = ['UPRE', 'DP2', 'GCV', 'L-curve']
+
+  def find_min(self, ftn):
     """
     find and return index of min(fx), and this minimum
     """
     idx   = where(ftn == min(ftn))[0][0]
-    a_min = rng[idx]
+    a_min = self.rng[idx]
     return idx, a_min
 
   def get_xfilt_choice(self, xi, xf):
@@ -164,7 +213,7 @@ class inverse_system(object):
     the filtered solution back.
     """
     s =   ' Enter 0 to enter k, 1 for UPRE, 2 for GCV, ' \
-        + '3 for DP, or 4 for L-curve. '
+        + '3 for DP, or 4 for L-curve: '
     param_choice = int(raw_input(s))
     
     if param_choice == 0:
@@ -179,19 +228,21 @@ class inverse_system(object):
     elif param_choice == 3:
       RegParam_fn = lambda a : self.DP2(a) 
       tit = 'DP'
-    elif param_choice == 4:
+    elif param_choice == 4 and self.filt_type == 'Tikhonov':
       RegParam_fn = lambda a : self.Lcurve(a)
       tit = 'L-curve'
-    
-    if param_choice != 0: alpha = fminbound(RegParam_fn, xi, xf)
+    elif param_choice == 4 and self.filt_type == 'TSVD':
+      print 'ERROR: cannot use L-curve with TSVD'
+      exit(1)
+   
+    # only compute the alpha if you did not explicitly state it :
+    if self.filt_type == 'Tikhonov' and param_choice != 0: 
+      alpha = fminbound(RegParam_fn, xi, xf)
+    elif self.filt_type == 'TSVD' and param_choice != 0:
+      alpha = fminbound(RegParam_fn, 0, self.n)
     
     # Now compute the regularized solution for TSVD
-    S      = self.S
-    V      = self.V
-    dS2    = S**2
-    UTb    = self.UTb
-    dSfilt = S / (S**2 + alpha)
-    x_filt = dot(V.T, dSfilt * UTb)
+    x_filt = self.get_xfilt(alpha)
     return x_filt, alpha, tit
 
   def get_xfilt(self, alpha):
@@ -201,20 +252,29 @@ class inverse_system(object):
     S      = self.S
     V      = self.V
     UTb    = self.UTb
-    dSfilt = S / (S**2 + alpha) 
-    x_filt = dot(V.T, dSfilt * UTb)
+    if self.filt_type == 'Tikhonov':
+      dSfilt = S**2 / (S**2 + alpha) 
+    else:
+      dSfilt         = ones(self.n)
+      dSfilt[alpha:] = 0.0
+    x_filt = dot(V.T, dSfilt / S * UTb)
     return x_filt
 
   def plot_filt(self, ax, x_filt, alpha, tit):
     """
     plot the filtered solution.
     """
+    if self.filt_type == 'Tikhonov':
+      st = tit + r' Filtered, $\alpha = %.2E$'
+    elif self.filt_type == 'TSVD':
+      st = tit + r' Filtered, $\alpha = %.f$ '
+    
     t      = self.t
     x_true = self.x_true
 
     ax.plot(t, x_true, 'k-', label='true',        lw=1.5)
     ax.plot(t, x_filt, 'r-', label=r'$x_{filt}$', lw=1.5)
-    ax.set_title(tit + r' Filtered, $\alpha = %.2E$' % alpha)
+    ax.set_title(st % alpha)
     ax.set_xlabel(r'$t$')
     leg = ax.legend(loc='upper left')
     leg.get_frame().set_alpha(0.5)
@@ -251,20 +311,34 @@ class inverse_system(object):
     leg.get_frame().set_alpha(0.5)
     ax.grid()
   
-  def plot_errors(self, ax, rng, fs, MSEs):
+  def plot_errors(self, ax):
     """
     plot the errors :
     """
+    fs   = self.fs
+    MSEs = self.MSEs
+
     # find index of minimum :
+    rng    = self.rng
     idxf   = where(fs == min(fs))[0][0]
     idxm   = where(MSEs == min(MSEs))[0][0]
     a_minf = rng[idxf]
     a_minm = rng[idxm]
-  
-    ax.loglog(rng,    fs,         lw=2.0, label=r'R.E.: %.2E' % a_minf)
-    ax.loglog(rng,    MSEs,       lw=2.0, label=r'$MSE$: %.2E' % a_minm)
-    ax.loglog(a_minm, MSEs[idxm], 'ro',   label=r'min{$\alpha$}')
-    ax.loglog(a_minf, fs[idxf],   'ro')
+    
+    if self.filt_type == 'Tikhonov':
+      ls      = '-'
+      re_lab  = r'R.E.: %.2E'
+      mse_lab = r'$MSE$: %.2E'
+    elif self.filt_type == 'TSVD':
+      ls      = 'o'
+      re_lab  = r'R.E.: %.f'
+      mse_lab = r'$MSE$: %.f'
+
+    ax.loglog(rng,    fs,         ls, lw=2.0, label=re_lab % a_minf)
+    ax.loglog(rng,    MSEs,       ls, lw=2.0, label=mse_lab % a_minm)
+    ax.loglog(a_minm, MSEs[idxm], 'd', color='#3d0057', markersize=10,
+              label=r'min{$\alpha$}')
+    ax.loglog(a_minf, fs[idxf],   'd', color='#3d0057', markersize=10)
     ax.set_xlabel(r'$\alpha$')
     ax.set_ylabel(r'ERROR$(\alpha)$')
     ax.set_title(r'Errors')
@@ -272,23 +346,35 @@ class inverse_system(object):
     leg.get_frame().set_alpha(0.5)
     ax.grid()
   
-  def plot_error_list(self, ax, rng, errors, tits):
+  def plot_error_list(self, ax):
     """
     plot a list of error values <errors> over range <rng> with 
     corresponding titles <tits> to axes object <ax>.
     """
+    errors = self.errors
+    tits   = self.err_tits
+    rng    = self.rng
+
+    if self.filt_type == 'Tikhonov':
+      ls  = '-'
+      fmt = '.2E'
+    elif self.filt_type == 'TSVD':
+      ls  = 'o'
+      fmt = '.f'
+
     for e, t in zip(errors, tits):
       if t == 'L-curve':
-        idx, a = self.find_min(rng, -e)
+        idx, a = self.find_min(-e)
       else:
-        idx, a = self.find_min(rng, e)
-      ax.plot(a, e[idx], 'ro')
-      ax.loglog(rng, e, lw=2.0, label=r'' + t + ': %.2E' % a)
+        idx, a = self.find_min(e)
+      st = r'' + t + ': %' + fmt
+      ax.loglog(rng, e, ls, lw=2.0, label=st % a)
+      ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
    
     ax.set_xlabel(r'$\alpha$')
     ax.set_ylabel(r'ERROR$(\alpha)$')
     ax.set_title(r'Errors')
-    leg = ax.legend(loc='lower right')
+    leg = ax.legend(loc='upper left')
     leg.get_frame().set_alpha(0.5)
     ax.grid()
   
