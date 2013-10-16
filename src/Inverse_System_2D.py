@@ -87,6 +87,7 @@ class Inverse_System_2D(Inverse_System):
     st = tit + r' Filtered, $\alpha = %.2E$'
     ax.imshow(x_filt)
     ax.set_title(st % alpha)
+    axis('off')
   
   def plot_true(self, ax):
     """
@@ -175,7 +176,6 @@ class Inverse_System_2D(Inverse_System):
     ax.set_title(r'Variance $\sigma^2/\sigma_i^2$')
     ax.set_xlabel(r'$i$')
     ax.grid()
-
 
 
 
