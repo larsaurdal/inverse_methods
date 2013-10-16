@@ -22,6 +22,7 @@ class Inverse_System(object):
     self.U       = None 
     self.S       = None 
     self.V       = None 
+    self.Vx      = None
     self.UTb     = None 
   
   def set_filt_type(self, filt_type, rng=None):
@@ -54,13 +55,6 @@ class Inverse_System(object):
     ralpha = dot(A, xalpha - b)
     xi     = norm(xalpha)**2 
     rho    = norm(ralpha)**2 
-    
-    # From Hansen 2010 -- seems to be incorrect.
-    #zalpha = V*((dS./(dS2+alpha)).*(U.T*ralpha)) 
-    #xi_p = (4/sqrt(alpha))*xalpha.T*zalpha 
-    #calpha =   2*(xi*rho/xi_p) *...
-    #           (alpha*xi_p*rho+2*sqrt(alpha)*xi*rho+alpha^2*xi*xi_p) / ...
-    #           (alpha*xi^2+rho^2)^(3/2) 
     
     # From Vogel 2002. 
     xi_p   = sum(-2 * dS2 * UTb**2 / (dS2 + a)**3) 
@@ -124,22 +118,20 @@ class Inverse_System(object):
     """
     S      = self.S
     sigma  = self.sigma
-    V      = self.V
+    Vx     = self.Vx
     x_true = self.x_true
     if self.filt_type == 'Tikhonov':
       dSfilt = S**2 / (S**2 + a)
     else:
       dSfilt     = ones(self.n)
       dSfilt[a:] = 0.0
-    return + sigma**2 * sum( (dSfilt / S)**2 ) \
-           + sum( (1 - dSfilt)**2 * dot(V, x_true)**2 )
+    return sigma**2 * sum((dSfilt / S)**2) + sum((1 - dSfilt)**2 * Vx**2)
   
   def relative_error(self, a):
     """
     Relative error function.
     """
     S      = self.S
-    V      = self.V
     UTb    = self.UTb
     x_true = self.x_true
     if self.filt_type == 'Tikhonov':
@@ -147,7 +139,7 @@ class Inverse_System(object):
     else:
       dSfilt     = ones(self.n)
       dSfilt[a:] = 0.0
-    x_filt = dot(V.T, dSfilt / S * UTb) 
+    x_filt = self.get_xfilt(a) 
     return norm(x_filt - x_true) / norm(x_true)
   
   def calc_errors(self):
@@ -228,5 +220,87 @@ class Inverse_System(object):
     """
     pass
 
+  def plot_errors(self, ax, err_list, alphas, idxs, err_tits):
+    """
+    plot the errors :
+    """
+    fs   = self.fs
+    MSEs = self.MSEs
+
+    # find index of minimum :
+    rng  = self.rng
+    
+    if self.filt_type == 'Tikhonov':
+      ls    = '-'
+      lab1  = r'' + err_tits[0] + ': %.2E'
+      lab2  = r'' + err_tits[1] + ': %.2E'
+      ax.loglog(rng, err_list[0],    ls, lw=2.0, label=lab1 % alphas[0])
+      ax.loglog(rng, err_list[1],    ls, lw=2.0, label=lab2 % alphas[1])
+      ax.loglog(alphas[0], err_list[0][idxs[0]], 'd', color='#3d0057', 
+                markersize=10, label=r'min{$\alpha$}')
+      ax.loglog(alphas[1], err_list[1][idxs[1]], 'd', color='#3d0057', 
+                markersize=10)
+    elif self.filt_type == 'TSVD':
+      ls    = 'o'
+      lab1  = r'' + err_tits[0] + ': %.f'
+      lab2  = r'' + err_tits[1] + ': %.f'
+      ax.semilogy(rng, err_list[0],    ls, lw=2.0, label=lab1 % alphas[0])
+      ax.semilogy(rng, err_list[1],    ls, lw=2.0, label=lab2 % alphas[1])
+      ax.semilogy(alphas[0], err_list[0][idxs[0]], 'd', color='#3d0057', 
+                  markersize=10, label=r'min{$\alpha$}')
+      ax.semilogy(alphas[1], err_list[1][idxs[1]], 'd', color='#3d0057', 
+                  markersize=10)
+
+    ax.set_xlabel(r'$\alpha$')
+    ax.set_ylabel(r'ERROR$(\alpha)$')
+    ax.set_title(r'Errors')
+    leg = ax.legend()
+    leg.get_frame().set_alpha(0.5)
+    ax.grid()
+  
+  def plot_all_errors(self, ax):
+    """
+    plot a list of error values <errors> over range <rng> with 
+    corresponding titles <tits> to axes object <ax>.
+    """
+    rng    = self.rng
+
+    if self.filt_type == 'Tikhonov':
+      ls       = '-'
+      fmt      = '.2E'
+      errors   = [self.fs, self.MSEs, self.UPREs, 
+                  self.DP2s, self.GCVs, self.Lcs]
+      err_tits = ['relative', 'MSE', 'UPRE', 'DP2', 'GCV', 'L-curve']
+      for e, t in zip(errors, err_tits):
+        if t == 'L-curve':
+          idx, a = self.find_min(-e)
+        else:
+          idx, a = self.find_min(e)
+        st = r'' + t + ': %' + fmt
+        ax.loglog(rng, e, ls, lw=2.0, label=st % a)
+        ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
+      leg = ax.legend(loc='lower left')
+      leg.get_frame().set_alpha(0.5)
+    
+    elif self.filt_type == 'TSVD':
+      ls       = 'o'
+      fmt      = '.f'
+      errors   = [self.fs, self.MSEs, self.UPREs, self.DP2s, self.GCVs]
+      err_tits = ['relative', 'MSE', 'UPRE', 'DP2', 'GCV']
+      for e, t in zip(errors, err_tits):
+        if t == 'L-curve':
+          idx, a = self.find_min(-e)
+        else:
+          idx, a = self.find_min(e)
+        st = r'' + t + ': %' + fmt
+        ax.semilogy(rng, e, ls, lw=2.0, label=st % a)
+        ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
+      leg = ax.legend(loc='upper right')
+      leg.get_frame().set_alpha(0.5)
+   
+    ax.set_xlabel(r'$\alpha$')
+    ax.set_ylabel(r'ERROR$(\alpha)$')
+    ax.set_title(r'Errors')
+    ax.grid()
 
 

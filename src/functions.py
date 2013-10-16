@@ -36,16 +36,14 @@ def PSF2(t):
   kernel[high] = -100*t[high] + 10
   return kernel
 
-            
-
 def gaussian_kernel(t):
   """
   Descritization of the gaussian kernel function.
   """
-  n      = len(t)
+  n      = float(len(t))
   h      = (max(t) - min(t)) / n 
-  sig    = 0.05
-  kernel = 1 / (sqrt(pi) * sig) * exp(-(t-h/2)**2 / sig**2)
+  sig    = 0.02
+  kernel = 1/(sqrt(pi)*sig) * exp(-t**2/(sig**2))
   A      = h * toeplitz(kernel)
   return A
 

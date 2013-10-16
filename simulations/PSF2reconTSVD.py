@@ -2,8 +2,9 @@ import sys
 src_directory = '../src/'
 sys.path.append(src_directory)
 
-from pylab     import *
-from functions import *
+from pylab             import *
+from functions         import *
+from Inverse_System_1D import *
 
 mpl.rcParams['font.family']     = 'serif'
 mpl.rcParams['legend.fontsize'] = 'medium'
@@ -22,7 +23,7 @@ x_true_ftn = PSF2
 err_lvl    = 2.0
 
 # range for plotting errors :
-s = inverse_system(xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl)
+s = Inverse_System_1D(xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl)
 s.set_filt_type('TSVD')
 
 #===============================================================================

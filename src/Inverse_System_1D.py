@@ -19,7 +19,7 @@ class Inverse_System_1D(Inverse_System):
     # Set up true solution x_true and data b = A*x_true + error :
     x_true  = x_true_ftn(t)
     Ax      = dot(A, x_true)
-    sigma   = err_lvl/100 * norm(Ax) / sqrt(n)
+    sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)
     eta     = sigma * randn(n, 1)
     b       = Ax + eta.T[0]
     x_ls    = solve(A,b)
@@ -45,6 +45,7 @@ class Inverse_System_1D(Inverse_System):
     self.U       = U
     self.S       = S
     self.V       = V
+    self.Vx      = dot(V, x_true)
     self.UTb     = UTb
 
   def get_xfilt(self, alpha):
@@ -139,89 +140,6 @@ class Inverse_System_1D(Inverse_System):
     ax.set_ylabel(r'$x$')
     leg = ax.legend(loc='upper left')
     leg.get_frame().set_alpha(0.5)
-    ax.grid()
-  
-  def plot_errors(self, ax, err_list, alphas, idxs, err_tits):
-    """
-    plot the errors :
-    """
-    fs   = self.fs
-    MSEs = self.MSEs
-
-    # find index of minimum :
-    rng  = self.rng
-    
-    if self.filt_type == 'Tikhonov':
-      ls    = '-'
-      lab1  = r'' + err_tits[0] + ': %.2E'
-      lab2  = r'' + err_tits[1] + ': %.2E'
-      ax.loglog(rng, err_list[0],    ls, lw=2.0, label=lab1 % alphas[0])
-      ax.loglog(rng, err_list[1],    ls, lw=2.0, label=lab2 % alphas[1])
-      ax.loglog(alphas[0], err_list[0][idxs[0]], 'd', color='#3d0057', 
-                markersize=10, label=r'min{$\alpha$}')
-      ax.loglog(alphas[1], err_list[1][idxs[1]], 'd', color='#3d0057', 
-                markersize=10)
-    elif self.filt_type == 'TSVD':
-      ls    = 'o'
-      lab1  = r'' + err_tits[0] + ': %.f'
-      lab2  = r'' + err_tits[1] + ': %.f'
-      ax.semilogy(rng, err_list[0],    ls, lw=2.0, label=lab1 % alphas[0])
-      ax.semilogy(rng, err_list[1],    ls, lw=2.0, label=lab2 % alphas[1])
-      ax.semilogy(alphas[0], err_list[0][idxs[0]], 'd', color='#3d0057', 
-                  markersize=10, label=r'min{$\alpha$}')
-      ax.semilogy(alphas[1], err_list[1][idxs[1]], 'd', color='#3d0057', 
-                  markersize=10)
-
-    ax.set_xlabel(r'$\alpha$')
-    ax.set_ylabel(r'ERROR$(\alpha)$')
-    ax.set_title(r'Errors')
-    leg = ax.legend()
-    leg.get_frame().set_alpha(0.5)
-    ax.grid()
-  
-  def plot_all_errors(self, ax):
-    """
-    plot a list of error values <errors> over range <rng> with 
-    corresponding titles <tits> to axes object <ax>.
-    """
-    rng    = self.rng
-
-    if self.filt_type == 'Tikhonov':
-      ls       = '-'
-      fmt      = '.2E'
-      errors   = [self.fs, self.MSEs, self.UPREs, 
-                  self.DP2s, self.GCVs, self.Lcs]
-      err_tits = ['relative', 'MSE', 'UPRE', 'DP2', 'GCV', 'L-curve']
-      for e, t in zip(errors, err_tits):
-        if t == 'L-curve':
-          idx, a = self.find_min(-e)
-        else:
-          idx, a = self.find_min(e)
-        st = r'' + t + ': %' + fmt
-        ax.loglog(rng, e, ls, lw=2.0, label=st % a)
-        ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
-      leg = ax.legend(loc='lower left')
-      leg.get_frame().set_alpha(0.5)
-    
-    elif self.filt_type == 'TSVD':
-      ls       = 'o'
-      fmt      = '.f'
-      errors   = [self.fs, self.MSEs, self.UPREs, self.DP2s, self.GCVs]
-      err_tits = ['relative', 'MSE', 'UPRE', 'DP2', 'GCV']
-      for e, t in zip(errors, err_tits):
-        if t == 'L-curve':
-          idx, a = self.find_min(-e)
-        else:
-          idx, a = self.find_min(e)
-        st = r'' + t + ': %' + fmt
-        ax.semilogy(rng, e, ls, lw=2.0, label=st % a)
-        ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
-      leg = ax.legend(loc='upper right')
-      leg.get_frame().set_alpha(0.5)
-   
-    ax.set_xlabel(r'$\alpha$')
-    ax.set_ylabel(r'ERROR$(\alpha)$')
-    ax.set_title(r'Errors')
     ax.grid()
   
   def plot_U_vectors(self, ax):
