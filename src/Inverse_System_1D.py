@@ -14,7 +14,7 @@ class Inverse_System_1D(Inverse_System):
     t       = arange(xi, xf, h)
 
     # A discritization :
-    A       = A_ftn(t)
+    A       = A_ftn(t, sig=sig)
     
     # Set up true solution x_true and data b = A*x_true + error :
     x_true  = x_true_ftn(t)

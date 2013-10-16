@@ -36,18 +36,17 @@ def PSF2(t):
   kernel[high] = -100*t[high] + 10
   return kernel
 
-def gaussian_kernel(t):
+def gaussian_kernel(t, sig=0.05):
   """
   Descritization of the gaussian kernel function.
   """
   n      = float(len(t))
   h      = (max(t) - min(t)) / n 
-  sig    = 0.02
   kernel = 1/(sqrt(pi)*sig) * exp(-t**2/(sig**2))
   A      = h * toeplitz(kernel)
   return A
 
-def integral_op(t):
+def integral_op(t, sig=None):
   """
   Descritization of the integral operator.
   """

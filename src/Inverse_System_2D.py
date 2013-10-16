@@ -1,6 +1,7 @@
-from pylab          import *
-from scipy.optimize import fminbound
-from Inverse_System import *
+from pylab                   import *
+from scipy.optimize          import fminbound
+from Inverse_System          import *
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class Inverse_System_2D(Inverse_System):
 
@@ -18,8 +19,8 @@ class Inverse_System_2D(Inverse_System):
     ty      = arange(0, 1, hy)
 
     # A discritization :
-    A1      = A_ftn(tx)
-    A2      = A_ftn(ty)
+    A1      = A_ftn(tx, sig=sig)
+    A2      = A_ftn(ty, sig=sig)
     
     # Set up true solution x_true and data b = A*x_true + error :
     Ax      = dot(dot(A1, x_true), A2.T)
@@ -84,26 +85,37 @@ class Inverse_System_2D(Inverse_System):
     """
     plot the filtered solution.
     """
-    st = tit + r' Filtered, $\alpha = %.2E$'
-    ax.imshow(x_filt)
+    st      = tit + r' Filtered, $\alpha = %.2E$'
+    im      = ax.imshow(x_filt)
+    divider = make_axes_locatable(ax)
+    cax     = divider.append_axes("right", size="5%", pad=0.05)
     ax.set_title(st % alpha)
-    axis('off')
+    ax.axis('off')
+    colorbar(im, cax=cax)
   
   def plot_true(self, ax):
     """
     plot the true and blurred solution.
     """
-    x_true = self.x_true
-    ax.imshow(x_true)
+    x_true  = self.x_true
+    im      = ax.imshow(x_true)
+    divider = make_axes_locatable(ax)
+    cax     = divider.append_axes("right", size="5%", pad=0.05)
     ax.set_title(r'$\vec{x}_{true}$')
+    ax.axis('off')
+    colorbar(im, cax=cax)
   
   def plot_b(self, ax):
     """
     plot the true and blurred solution.
     """
-    b = self.b
-    ax.imshow(b)
+    b       = self.b
+    im      = ax.imshow(b)
+    divider = make_axes_locatable(ax)
+    cax     = divider.append_axes("right", size="5%", pad=0.05)
     ax.set_title(r'$\vec{b}$')
+    ax.axis('off')
+    colorbar(im, cax=cax)
   
   def plot_U_vectors(self, ax):
     """
