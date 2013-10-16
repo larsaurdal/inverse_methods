@@ -29,7 +29,7 @@ class Inverse_System_2D(Inverse_System):
    
     U1,S1,V1 = svd(A1)
     U2,S2,V2 = svd(A2)
-    S        = tensordot(S1, S2, 0)
+    S        = tensordot(S2, S1, 0)
     UTb      = dot(dot(U1.T, b), U2)
     
     # 2D problems can only be filtered by Tikhonov regularization
@@ -85,32 +85,24 @@ class Inverse_System_2D(Inverse_System):
     plot the filtered solution.
     """
     st = tit + r' Filtered, $\alpha = %.2E$'
-    
-    x_true = self.x_true
-
     ax.imshow(x_filt)
     ax.set_title(st % alpha)
-    ax.grid()
   
   def plot_true(self, ax):
     """
     plot the true and blurred solution.
     """
     x_true = self.x_true
-
     ax.imshow(x_true)
     ax.set_title(r'$\vec{x}_{true}$')
-    ax.grid()
   
   def plot_b(self, ax):
     """
     plot the true and blurred solution.
     """
     b = self.b
-
     ax.imshow(b)
     ax.set_title(r'$\vec{b}$')
-    ax.grid()
   
   def plot_U_vectors(self, ax):
     """
