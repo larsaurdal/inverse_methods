@@ -18,12 +18,12 @@ xi         = 0                  # begin of domain
 xf         = 1                  # end of domain
 n          = 80                 # number of nodes
 sig        = 0.05               # desired SD of noise
-A_ftn      = gaussian_kernel    # design matrix
+PSF        = gaussian_PSF       # design matrix
 x_true_ftn = wacky_thing        # true solution
 err_lvl    = 2.0                # error level parameter
 
 # object encapsulating the entire evaluative process on this system :
-s   = Inverse_System_1D(xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl)
+s = Inverse_System_1D(xi, xf, n, sig, err_lvl, x_true_ftn, PSF) 
 
 rng = logspace(log10(1e-10), log10(1), 1000)
 s.set_filt_type('Tikhonov', rng)

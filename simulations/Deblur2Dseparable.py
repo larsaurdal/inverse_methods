@@ -21,11 +21,11 @@ nx,ny = shape(x_true)
 x_true = x_true / x_true.max()
 
 sig        = 0.02
-A_ftn      = gaussian_kernel
+PSF        = gaussian_PSF
 err_lvl    = 2.0
 
 # range for plotting errors :
-s = Inverse_System_2D(sig, x_true, A_ftn, err_lvl)
+s = Inverse_System_2D(sig, err_lvl, x_true, PSF)
 
 rng = logspace(log10(1e-10), log10(10), 1000)
 s.set_filt_type('Tikhonov', rng)

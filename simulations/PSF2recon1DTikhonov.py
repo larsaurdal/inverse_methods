@@ -14,16 +14,15 @@ mpl.rcParams['legend.fontsize'] = 'medium'
 #  PSF reconstruction inverse problem with Dirichlet boundary conditions.
 #
 
-xi         = -0.4
-xf         =  0.4
+xi         = 0.0
+xf         = 1.0
 n          = 80
-sig        = 0.05
-A_ftn      = integral_op
-x_true_ftn = PSF2
+sig        = 0.02
+x_true_ftn = wacky_thing
 err_lvl    = 2.0
 
 # range for plotting errors :
-s = Inverse_System_1D(xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl)
+s = Inverse_System_1D(xi, xf, n, sig, err_lvl, x_true_ftn, PSF2)
 
 rng = logspace(log10(1e-10), log10(10), 1000)
 s.set_filt_type('Tikhonov', rng)

@@ -2,10 +2,12 @@ from pylab                   import *
 from scipy.optimize          import fminbound
 from Inverse_System          import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from functions               import descritize_PSF_kernel as d_psf
+from functions               import descritize_integral   as d_int
 
 class Inverse_System_2D(Inverse_System):
 
-  def __init__(self, sig, x_true, A_ftn, err_lvl): 
+  def __init__(self, sig, err_lvl, x_true, PSF, recon=False):
     """
     class representing a system we wish to invert.
     """
@@ -19,9 +21,13 @@ class Inverse_System_2D(Inverse_System):
     ty      = arange(0, 1, hy)
 
     # A discritization :
-    A1      = A_ftn(tx, sig=sig)
-    A2      = A_ftn(ty, sig=sig)
-    
+    if not recon:
+      A1       = d_psf(tx, PSF(tx, sig=sig))
+      A2       = d_psf(ty, PSF(ty, sig=sig))
+    else:
+      A1       = d_int(tx)
+      A2       = d_int(ty)
+
     # Set up true solution x_true and data b = A*x_true + error :
     Ax      = dot(dot(A1, x_true), A2.T)
     sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)

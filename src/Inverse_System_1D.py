@@ -1,10 +1,12 @@
 from pylab          import *
 from scipy.optimize import fminbound
 from Inverse_System import *
+from functions      import descritize_PSF_kernel as d_psf
+from functions      import descritize_integral   as d_int
 
 class Inverse_System_1D(Inverse_System):
 
-  def __init__(self, xi, xf, n, sig, x_true_ftn, A_ftn, err_lvl): 
+  def __init__(self, xi, xf, n, sig, err_lvl, x_true_ftn, PSF, recon=False):
     """
     class representing a system we wish to invert.
     """
@@ -14,7 +16,11 @@ class Inverse_System_1D(Inverse_System):
     t       = arange(xi, xf, h)
 
     # A discritization :
-    A       = A_ftn(t, sig=sig)
+    # A discritization :
+    if not recon:
+      A     = d_psf(t, PSF(t, sig=sig))
+    else:
+      A     = d_int(t)
     
     # Set up true solution x_true and data b = A*x_true + error :
     x_true  = x_true_ftn(t)

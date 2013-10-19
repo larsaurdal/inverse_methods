@@ -10,13 +10,13 @@ def wacky_thing(t):
                   + ((0.5 < t) & (t < 1)) * sin(2*pi*t)**4 )
   return wack / norm(wack)
 
-def PSF(t):
+def PSF(t, sig=[0.02, 0.08]):
   """
   PSF reconstruction x_true.
   """
   h      = (max(t) - min(t)) / len(t) 
-  sig1   = 0.02
-  sig2   = 0.08
+  sig1   = sig[0]
+  sig2   = sig[1]
   # Create the left-half of the PSF
   mid    = int(round(len(t)/2))
   kernel = zeros(len(t))
@@ -28,7 +28,10 @@ def PSF(t):
   # Create the normalized PSF
   return kernel / (h * sum(kernel))
 
-def PSF2(t):
+def PSF2(t, sig=None):
+  """
+  PSF2 reconstruction x_true.
+  """
   kernel  = zeros(len(t))
   low     = (-1/10. <= t) & (t <= 0)
   high    = (0      <  t) & (t <  1/10.)
@@ -36,17 +39,25 @@ def PSF2(t):
   kernel[high] = -100*t[high] + 10
   return kernel
 
-def gaussian_kernel(t, sig=0.05):
+def gaussian_PSF(t, sig=0.05):
   """
-  Descritization of the gaussian kernel function.
+  Gaussian kernel PSF.
   """
   n      = float(len(t))
   h      = (max(t) - min(t)) / n 
   kernel = 1/(sqrt(pi)*sig) * exp(-t**2/(sig**2))
-  A      = h * toeplitz(kernel)
-  return A
+  return kernel
 
-def integral_op(t, sig=None):
+def descritize_PSF_kernel(t, kernel):
+  """
+  Descritization of the Gaussian.
+  """
+  n = len(t)
+  h = (max(t) - min(t)) / n 
+  A = h * toeplitz(kernel)
+  return A 
+
+def descritize_integral(t):
   """
   Descritization of the integral operator.
   """
