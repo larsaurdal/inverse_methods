@@ -4,11 +4,10 @@ from Inverse_System          import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from functions               import descritize_PSF_kernel as d_psf
 from functions               import descritize_integral   as d_int
-from functions               import descritize_integral   as d_int
 
 class Inverse_System_2D(Inverse_System):
 
-  def __init__(self, sig, err_lvl, x_true, PSF, recon=False, 
+  def __init__(self, sig, err_lvl, x_true, PSF, recon=False, cmap='Greys',
                per_BC=False, per_t=0.0):
     """
     class representing a system we wish to invert.
@@ -26,11 +25,11 @@ class Inverse_System_2D(Inverse_System):
       ty      = arange(0, 1, hy)
       # A discritization :
       if not recon:
-        A1       = d_psf(tx, PSF(tx, hx, sig=sig))
-        A2       = d_psf(ty, PSF(ty, hy, sig=sig))
+        A1       = d_psf(tx, hx, PSF(tx, hx, sig=sig))
+        A2       = d_psf(ty, hy, PSF(ty, hy, sig=sig))
       else:
-        A1       = d_int(tx)
-        A2       = d_int(ty)
+        A1       = d_int(tx, hx)
+        A2       = d_int(ty, hy)
 
       # Set up true solution x_true and data b = A*x_true + error :
       Ax      = dot(dot(A1, x_true), A2.T)
@@ -67,7 +66,7 @@ class Inverse_System_2D(Inverse_System):
       # A discritization :
       if not recon:
         X,Y      = meshgrid(tx,ty)
-        ahat     = fft2(fftshift(PSF(X, Y, hx, hy)))
+        ahat     = fft2(fftshift(PSF(X, Y, hx, hy, sig=sig)))
       else:
         print "reconstruction not implemented"
         exit(1)
@@ -86,6 +85,7 @@ class Inverse_System_2D(Inverse_System):
     # 2D problems can only be filtered by Tikhonov regularization
     self.filt_type = 'Tikhonov'
     
+    self.cmap    = cmap
     self.per_BC  = per_BC
     self.rng     = arange(0, 1, 0.1)
     self.n       = n
@@ -123,7 +123,7 @@ class Inverse_System_2D(Inverse_System):
       else:
         dSfilt         = ones((self.nx, self.ny))
         dSfilt[alpha:] = 0.0
-      x_filt = real(ifft2(dSfilt * UTb))
+      x_filt = real(ifft2(dSfilt / S * UTb))
       
     return x_filt
   
@@ -138,7 +138,7 @@ class Inverse_System_2D(Inverse_System):
     plot the filtered solution.
     """
     st      = tit + r' Filtered, $\alpha = %.2E$'
-    im      = ax.imshow(x_filt)
+    im      = ax.imshow(x_filt, cmap=self.cmap)
     divider = make_axes_locatable(ax)
     cax     = divider.append_axes("right", size="5%", pad=0.05)
     ax.set_title(st % alpha)
@@ -150,7 +150,7 @@ class Inverse_System_2D(Inverse_System):
     plot the true and blurred solution.
     """
     x_true  = self.x_true
-    im      = ax.imshow(x_true)
+    im      = ax.imshow(x_true, cmap=self.cmap)
     divider = make_axes_locatable(ax)
     cax     = divider.append_axes("right", size="5%", pad=0.05)
     ax.set_title(r'$\vec{x}_{true}$')
@@ -162,7 +162,7 @@ class Inverse_System_2D(Inverse_System):
     plot the true and blurred solution.
     """
     b       = self.b
-    im      = ax.imshow(b)
+    im      = ax.imshow(b, cmap=self.cmap)
     divider = make_axes_locatable(ax)
     cax     = divider.append_axes("right", size="5%", pad=0.05)
     ax.set_title(r'$\vec{b}$')

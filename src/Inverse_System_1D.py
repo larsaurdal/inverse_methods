@@ -16,14 +16,13 @@ class Inverse_System_1D(Inverse_System):
     t       = arange(xi, xf, h)
 
     # A discritization :
-    # A discritization :
     if not recon:
-      A     = d_psf(t, PSF(t, h, sig=sig))
+      A     = d_psf(t, h, PSF(t, h, sig))
     else:
-      A     = d_int(t)
+      A     = d_int(t, h)
     
     # Set up true solution x_true and data b = A*x_true + error :
-    x_true  = x_true_ftn(t)
+    x_true  = x_true_ftn(t, h, sig)
     Ax      = dot(A, x_true)
     sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)
     eta     = sigma * randn(n, 1)

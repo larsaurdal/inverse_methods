@@ -21,7 +21,7 @@ nx,ny = shape(x_true)
 x_true = x_true / x_true.max()
 
 sig        = 0.02
-PSF        = gaussian_PSF_2D
+PSF        = gaussian_PSF
 err_lvl    = 2.0
 
 # range for plotting errors :
@@ -59,8 +59,8 @@ a_man = 0.0011
 # Now compute the regularized solution for TSVD
 xfiltUPRE = s.get_xfilt(a_min1)
 xfiltDP2  = s.get_xfilt(a_min2)
-xfiltGCV  = s.get_xfilt(a_min2)
-xfiltMSE  = s.get_xfilt(a_min2)
+xfiltGCV  = s.get_xfilt(a_min3)
+xfiltMSE  = s.get_xfilt(a_min4)
 xfiltMan  = s.get_xfilt(a_man)
 
 # plot both the solutions :
