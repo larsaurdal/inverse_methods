@@ -18,7 +18,7 @@ class Inverse_System_1D(Inverse_System):
     # A discritization :
     # A discritization :
     if not recon:
-      A     = d_psf(t, PSF(t, sig=sig))
+      A     = d_psf(t, PSF(t, h, sig=sig))
     else:
       A     = d_int(t)
     

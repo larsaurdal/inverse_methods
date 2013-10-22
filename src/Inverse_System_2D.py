@@ -4,12 +4,15 @@ from Inverse_System          import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from functions               import descritize_PSF_kernel as d_psf
 from functions               import descritize_integral   as d_int
+from functions               import descritize_integral   as d_int
 
 class Inverse_System_2D(Inverse_System):
 
-  def __init__(self, sig, err_lvl, x_true, PSF, recon=False):
+  def __init__(self, sig, err_lvl, x_true, PSF, recon=False, 
+               per_BC=False, per_t=0.0):
     """
     class representing a system we wish to invert.
+    per_t : truncate amount (left, right, top, bottom).
     """
     nx, ny  = shape(x_true)
     nx      = float(nx)
@@ -17,68 +20,111 @@ class Inverse_System_2D(Inverse_System):
     n       = nx * ny
     hx      = 1/nx
     hy      = 1/ny
-    tx      = arange(0, 1, hx)
-    ty      = arange(0, 1, hy)
 
-    # A discritization :
-    if not recon:
-      A1       = d_psf(tx, PSF(tx, sig=sig))
-      A2       = d_psf(ty, PSF(ty, sig=sig))
-    else:
-      A1       = d_int(tx)
-      A2       = d_int(ty)
+    if not per_BC:
+      tx      = arange(0, 1, hx)
+      ty      = arange(0, 1, hy)
+      # A discritization :
+      if not recon:
+        A1       = d_psf(tx, PSF(tx, hx, sig=sig))
+        A2       = d_psf(ty, PSF(ty, hy, sig=sig))
+      else:
+        A1       = d_int(tx)
+        A2       = d_int(ty)
 
-    # Set up true solution x_true and data b = A*x_true + error :
-    Ax      = dot(dot(A1, x_true), A2.T)
-    sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)
-    eta     = sigma * randn(nx, ny)
-    b       = Ax + eta
+      # Set up true solution x_true and data b = A*x_true + error :
+      Ax      = dot(dot(A1, x_true), A2.T)
+      sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)
+      eta     = sigma * randn(nx, ny)
+      b       = Ax + eta
    
-    U1,S1,V1 = svd(A1)
-    U2,S2,V2 = svd(A2)
-    S        = tensordot(S2, S1, 0)
-    UTb      = dot(dot(U1.T, b), U2)
+      U1,S1,V1 = svd(A1)
+      U2,S2,V2 = svd(A2)
+      S        = tensordot(S2, S1, 0)
+      UTb      = dot(dot(U1.T, b), U2)
+      Vx       = dot(V1.T, dot(x_true, V2))
+      
+      self.A1      = A1
+      self.A2      = A2
+      self.U1      = U1
+      self.U2      = U2
+      self.V1      = V1
+      self.V2      = V2
+      self.S1      = S1
+      self.S2      = S2
+    
+    else:
+      left    = -per_t
+      right   =  per_t
+      bottom  = -per_t
+      top     =  per_t
+      tx      = arange(left,   right, hx)
+      ty      = arange(bottom, top,   hy)
+      
+      def Amult(x):
+        return real(ifft2(ahat*fft2(x)))
+      
+      # A discritization :
+      if not recon:
+        X,Y      = meshgrid(tx,ty)
+        ahat     = fft2(fftshift(PSF(X, Y, hx, hy)))
+      else:
+        print "reconstruction not implemented"
+        exit(1)
+
+      # Set up true solution x_true and data b = A*x_true + error :
+      Ax      = Amult(x_true)
+      sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)
+      eta     = sigma * randn(nx, ny)
+      b       = Ax + eta
+      bhat    = fft2(b)
+   
+      S       = abs(ahat)
+      UTb     = bhat
+      Vx      = fft2(x_true)
     
     # 2D problems can only be filtered by Tikhonov regularization
     self.filt_type = 'Tikhonov'
     
+    self.per_BC  = per_BC
     self.rng     = arange(0, 1, 0.1)
     self.n       = n
     self.nx      = nx
     self.ny      = ny
     self.tx      = tx
     self.ty      = ty
-    self.A1      = A1
-    self.A2      = A2
     self.x_true  = x_true
     self.Ax      = Ax
     self.err_lvl = err_lvl
     self.sigma   = sigma
     self.b       = b
-    self.U1      = U1
-    self.U2      = U2
-    self.S1      = S1
-    self.S2      = S2
     self.S       = S
-    self.V1      = V1
-    self.V2      = V2
-    self.Vx      = dot(V1.T, dot(x_true, V2))
     self.UTb     = UTb
+    self.Vx      = Vx
 
   def get_xfilt(self, alpha):
     """
     get the filtered x solution.
     """
     S      = self.S
-    V1     = self.V1
-    V2     = self.V2
     UTb    = self.UTb
-    if self.filt_type == 'Tikhonov':
-      dSfilt = S**2 / (S**2 + alpha) 
+    if not self.per_BC:
+      V1     = self.V1
+      V2     = self.V2
+      if self.filt_type == 'Tikhonov':
+        dSfilt = S**2 / (S**2 + alpha) 
+      else:
+        dSfilt         = ones((self.nx, self.ny))
+        dSfilt[alpha:] = 0.0
+      x_filt = dot(V1.T, dot(dSfilt / S * UTb, V2))
     else:
-      dSfilt         = ones((self.nx, self.ny))
-      dSfilt[alpha:] = 0.0
-    x_filt = dot(V1.T, dot(dSfilt / S * UTb, V2))
+      if self.filt_type == 'Tikhonov':
+        dSfilt = S**2 / (S**2 + alpha) 
+      else:
+        dSfilt         = ones((self.nx, self.ny))
+        dSfilt[alpha:] = 0.0
+      x_filt = real(ifft2(dSfilt * UTb))
+      
     return x_filt
   
   def Lcurve(self, a):

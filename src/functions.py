@@ -10,11 +10,10 @@ def wacky_thing(t):
                   + ((0.5 < t) & (t < 1)) * sin(2*pi*t)**4 )
   return wack / norm(wack)
 
-def PSF(t, sig=[0.02, 0.08]):
+def PSF(t, h, sig=[0.02, 0.08]):
   """
   PSF reconstruction x_true.
   """
-  h      = (max(t) - min(t)) / len(t) 
   sig1   = sig[0]
   sig2   = sig[1]
   # Create the left-half of the PSF
@@ -28,7 +27,7 @@ def PSF(t, sig=[0.02, 0.08]):
   # Create the normalized PSF
   return kernel / (h * sum(kernel))
 
-def PSF2(t, sig=None):
+def PSF2(t, h, sig=None):
   """
   PSF2 reconstruction x_true.
   """
@@ -39,21 +38,25 @@ def PSF2(t, sig=None):
   kernel[high] = -100*t[high] + 10
   return kernel
 
-def gaussian_PSF(t, sig=0.05):
+def gaussian_PSF(t, h, sig=0.05):
   """
   Gaussian kernel PSF.
   """
-  n      = float(len(t))
-  h      = (max(t) - min(t)) / n 
   kernel = 1/(sqrt(pi)*sig) * exp(-t**2/(sig**2))
   return kernel
 
-def descritize_PSF_kernel(t, kernel):
+def gaussian_PSF_2D(x, y, hx, hy, sig=0.05):
+  """
+  Gaussian kernel PSF.
+  """
+  kernel = exp(-((x-hx/2.0)**2 + (y-hy/2.0)**2) / (2*sig**2))
+  kernel = kernel / sum(kernel)
+  return kernel
+
+def descritize_PSF_kernel(t, h, kernel):
   """
   Descritization of the Gaussian.
   """
-  n = len(t)
-  h = (max(t) - min(t)) / n 
   A = h * toeplitz(kernel)
   return A 
 
