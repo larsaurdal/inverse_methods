@@ -24,7 +24,8 @@ PSF        = gaussian_PSF_2D
 err_lvl    = 2.0
 
 # range for plotting errors :
-s = Inverse_System_2D(sig, err_lvl, x_true, PSF, per_BC=True, per_t=0.5)
+s = Inverse_System_2D(sig, err_lvl, x_true, PSF, per_BC=True, per_t=0.5,
+                      cmap='Greys_r')
 
 rng = logspace(log10(1e-6), log10(10), 1000)
 s.set_filt_type('Tikhonov', rng)
