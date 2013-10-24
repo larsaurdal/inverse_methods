@@ -25,14 +25,14 @@ err_lvl    = 2.0
 
 # range for plotting errors :
 s = Inverse_System_2D(sig, err_lvl, x_true, PSF, per_BC=True, per_t=0.5,
-                      cmap='Greys_r')
+                      restrict_dom=(100,228), cmap='Greys_r')
 
-rng = logspace(log10(1e-6), log10(10), 1000)
+rng = logspace(log10(1e-15), log10(10), 1000)
 s.set_filt_type('Tikhonov', rng)
 
 #===============================================================================
 # plotting
-img_dir = '/home/pf4d/exmortis223@gmail.com/UM/2013 Autumn/M 514 - Inverse Methods/homework/04/doc/images/'
+img_dir = '/home/pf4d/exmortis223@gmail.com/UM/2013 Autumn/M 514 - Inverse Methods/homework/05/doc/images/'
 
 fig = figure(figsize=(13,9))
 ax1 = fig.add_subplot(231)
@@ -69,14 +69,14 @@ s.plot_filt(ax4, xfiltDP2,  a_min2, 'DP2')
 s.plot_filt(ax6, xfiltMSE,  a_min4, 'MSE')
 s.plot_filt(ax5, xfiltMan,  a_man, 'manual')
 tight_layout()
-savefig(img_dir + 'prb36a.png', dpi=300)
+savefig(img_dir + 'prb38b.png', dpi=300)
 show()
 
 # plot all the errors on a loglog axis :
 fig = figure()
 ax  = fig.add_subplot(111)
 s.plot_all_errors(ax)
-#savefig(img_dir + 'prb36a_error.png', dpi=300)
+savefig(img_dir + 'prb38b_error.png', dpi=300)
 show()
 
 

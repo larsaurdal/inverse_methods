@@ -8,7 +8,7 @@ from functions               import descritize_integral   as d_int
 class Inverse_System_2D(Inverse_System):
 
   def __init__(self, sig, err_lvl, x_true, PSF, recon=False, cmap='Greys',
-               per_BC=False, per_t=0.0):
+               per_BC=False, per_t=0.0, restrict_dom=(None,None)):
     """
     class representing a system we wish to invert.
     per_t : truncate amount (left, right, top, bottom).
@@ -60,9 +60,6 @@ class Inverse_System_2D(Inverse_System):
       tx      = arange(left,   right, hx)
       ty      = arange(bottom, top,   hy)
       
-      def Amult(x):
-        return real(ifft2(ahat*fft2(x)))
-      
       # A discritization :
       if not recon:
         X,Y      = meshgrid(tx,ty)
@@ -72,7 +69,21 @@ class Inverse_System_2D(Inverse_System):
         exit(1)
 
       # Set up true solution x_true and data b = A*x_true + error :
-      Ax      = Amult(x_true)
+      l       = restrict_dom[0]
+      r       = restrict_dom[1]
+      if l is not None and r is not None:
+        ml    = 0.5*(r - l)
+        mr    = 1.5*(r - l)
+      else:
+        ml    = 0
+        mr    = nx
+      Ax      = real(ifft2(ahat*fft2(x_true)))
+      Ax      = Ax[l:r, l:r]
+      x_true  = x_true[l:r, l:r]
+      ahat    = ahat[ml:mr, ml:mr]
+      nx,ny   = shape(Ax)
+      nx      = float(nx)
+      ny      = float(ny)
       sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)
       eta     = sigma * randn(nx, ny)
       b       = Ax + eta

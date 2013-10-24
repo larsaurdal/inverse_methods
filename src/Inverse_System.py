@@ -258,7 +258,7 @@ class Inverse_System(object):
     leg.get_frame().set_alpha(0.5)
     ax.grid()
   
-  def plot_all_errors(self, ax):
+  def plot_all_errors(self, ax, leg_loc='upper left'):
     """
     plot a list of error values <errors> over range <rng> with 
     corresponding titles <tits> to axes object <ax>.
@@ -279,7 +279,7 @@ class Inverse_System(object):
         st = r'' + t + ': %' + fmt
         ax.loglog(rng, e, ls, lw=2.0, label=st % a)
         ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
-      leg = ax.legend(loc='lower left')
+      leg = ax.legend(loc=leg_loc)
       leg.get_frame().set_alpha(0.5)
     
     elif self.filt_type == 'TSVD':
@@ -295,7 +295,7 @@ class Inverse_System(object):
         st = r'' + t + ': %' + fmt
         ax.semilogy(rng, e, ls, lw=2.0, label=st % a)
         ax.plot(a, e[idx], 'd', color='#3d0057', markersize=10)
-      leg = ax.legend(loc='upper right')
+      leg = ax.legend(loc=leg_loc)
       leg.get_frame().set_alpha(0.5)
    
     ax.set_xlabel(r'$\alpha$')
