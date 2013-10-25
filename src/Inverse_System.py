@@ -38,7 +38,12 @@ class Inverse_System(object):
         else:
           self.rng = rng
       self.filt_type = filt_type
+  
+  def get_xfilt(self, alpha):
+    pass
 
+  def get_ralpha(self, alpha):
+    pass
  
   def Lcurve(self, a):
     """
@@ -46,13 +51,10 @@ class Inverse_System(object):
     """
     dS2    = self.S**2 
     UTb    = self.UTb
-    V      = self.V
     S      = self.S
-    A      = self.A
-    b      = self.b
-     
-    xalpha = dot(V, (S / (dS2 + a)) * UTb) 
-    ralpha = dot(A, xalpha - b)
+    
+    xalpha = self.get_xfilt(a) 
+    ralpha = self.get_ralpha(a, xalpha)
     xi     = norm(xalpha)**2 
     rho    = norm(ralpha)**2 
     

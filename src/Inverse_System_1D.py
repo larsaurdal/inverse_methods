@@ -68,6 +68,15 @@ class Inverse_System_1D(Inverse_System):
     x_filt = dot(V.T, dSfilt / S * UTb)
     return x_filt
 
+  def get_ralpha(self, alpha, xalpha):
+    """
+    get r-alpha for L-curve.
+    """
+    A = self.A
+    b = self.b
+    ralpha = dot(A, xalpha - b)
+    return ralpha
+
   def plot_filt(self, ax, x_filt, alpha, tit):
     """
     plot the filtered solution.

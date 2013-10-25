@@ -92,6 +92,8 @@ class Inverse_System_2D(Inverse_System):
       S       = abs(ahat)
       UTb     = bhat
       Vx      = fft2(x_true)
+
+      self.ahat = ahat
     
     # 2D problems can only be filtered by Tikhonov regularization
     self.filt_type = 'Tikhonov'
@@ -138,11 +140,19 @@ class Inverse_System_2D(Inverse_System):
       
     return x_filt
   
-  def Lcurve(self, a):
+  def get_ralpha(self, alpha, xalpha):
     """
-    Compute minus the curvature of the L-curve
+    get r-alpha for L-curve.
     """
-    return 0.0
+    b  = self.b
+    if not self.per_BC:
+      A1 = self.A1
+      A2 = self.A2
+      ralpha = dot(dot(A1, xalpha - b), A2.T)
+    else:
+      ahat   = self.ahat
+      ralpha = real(ifft2(ahat*fft2(xalpha - b)))
+    return ralpha
 
   def plot_filt(self, ax, x_filt, alpha, tit):
     """
