@@ -1,5 +1,6 @@
 from pylab                   import *
 from scipy.optimize          import fminbound
+from scipy.sparse.linalg     import cg
 from Inverse_System          import *
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from functions               import descritize_PSF_kernel as d_psf
@@ -8,11 +9,15 @@ from functions               import descritize_integral   as d_int
 class Inverse_System_2D(Inverse_System):
 
   def __init__(self, sig, err_lvl, x_true, PSF, recon=False, cmap='Greys',
-               per_BC=False, per_t=0.0, restrict_dom=(None,None)):
+               per_BC=False, per_BC_pad=False, per_t=0.0, 
+               restrict_dom=(None,None)):
     """
     class representing a system we wish to invert.
     per_t : truncate amount (left, right, top, bottom).
     """
+    self.per_BC     = per_BC
+    self.per_BC_pad = per_BC_pad
+
     nx, ny  = shape(x_true)
     nx      = float(nx)
     ny      = float(ny)
@@ -43,14 +48,14 @@ class Inverse_System_2D(Inverse_System):
       UTb      = dot(dot(U1.T, b), U2)
       Vx       = dot(V1.T, dot(x_true, V2))
       
-      self.A1      = A1
-      self.A2      = A2
-      self.U1      = U1
-      self.U2      = U2
-      self.V1      = V1
-      self.V2      = V2
-      self.S1      = S1
-      self.S2      = S2
+      self.A1  = A1
+      self.A2  = A2
+      self.U1  = U1
+      self.U2  = U2
+      self.V1  = V1
+      self.V2  = V2
+      self.S1  = S1
+      self.S2  = S2
     
     else:
       left    = -per_t
@@ -77,20 +82,44 @@ class Inverse_System_2D(Inverse_System):
       else:
         ml    = 0
         mr    = nx
-      Ax      = real(ifft2(ahat*fft2(x_true)))
+      Ax      = real(ifft2(ahat * fft2(x_true)))
       Ax      = Ax[l:r, l:r]
       x_true  = x_true[l:r, l:r]
       ahat    = ahat[ml:mr, ml:mr]
-      nx,ny   = shape(Ax)
-      nx      = float(nx)
-      ny      = float(ny)
+      nx2,ny2 = shape(Ax)
+      nx2     = float(nx2)
+      ny2     = float(ny2)
       sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)
-      eta     = sigma * randn(nx, ny)
+      eta     = sigma * randn(nx2, ny2)
       b       = Ax + eta
       bhat    = fft2(b)
+     
+      if self.per_BC_pad:
+        p_d   = ((ny/4, ny/4), (nx/4, nx/4))
+        b_pad = pad(b, p_d, 'constant')
+        bphat = fft2(b_pad)
+        D     = pad(ones(shape(b)), p_d, 'constant')
+        ATDb  = real(ifft2(conj(ahat) * fft2(b_pad)))
+        UTb   = bphat
+
+        # Compute lambda A'*M*(A*x) + alpha L*x :
+        DA   = D * real(ifft2(ahat))
+        ATDA = real(ifft2(conj(ahat) * fft2(DA)))
+        B    = ATDA + alpha*ones(len(bphat))
+        c    = ATDb
+        ATA  = real(ifft2(conj(ahat) * real(ifft2(ahat))))
+        M    = ATA + alpha*ones(len(bphat))
+       
+        self.DA   = DA
+        self.ATDA = ATDA
+        self.B    = B
+        self.c    = c
+        self.M    = M
+      
+      else:
+        UTb   = bhat
    
       S       = abs(ahat)
-      UTb     = bhat
       Vx      = fft2(x_true)
 
       self.ahat = ahat
@@ -98,22 +127,23 @@ class Inverse_System_2D(Inverse_System):
     # 2D problems can only be filtered by Tikhonov regularization
     self.filt_type = 'Tikhonov'
     
-    self.cmap    = cmap
-    self.per_BC  = per_BC
-    self.rng     = arange(0, 1, 0.1)
-    self.n       = n
-    self.nx      = nx
-    self.ny      = ny
-    self.tx      = tx
-    self.ty      = ty
-    self.x_true  = x_true
-    self.Ax      = Ax
-    self.err_lvl = err_lvl
-    self.sigma   = sigma
-    self.b       = b
-    self.S       = S
-    self.UTb     = UTb
-    self.Vx      = Vx
+    self.cmap        = cmap
+    self.per_BC      = per_BC
+    self.per_BC_pad  = per_BC
+    self.rng         = arange(0, 1, 0.1)
+    self.n           = n
+    self.nx          = nx
+    self.ny          = ny
+    self.tx          = tx
+    self.ty          = ty
+    self.x_true      = x_true
+    self.Ax          = Ax
+    self.err_lvl     = err_lvl
+    self.sigma       = sigma
+    self.b           = b
+    self.S           = S
+    self.UTb         = UTb
+    self.Vx          = Vx
 
   def get_xfilt(self, alpha):
     """
@@ -131,13 +161,19 @@ class Inverse_System_2D(Inverse_System):
         dSfilt[alpha:] = 0.0
       x_filt = dot(V1.T, dot(dSfilt / S * UTb, V2))
     else:
-      if self.filt_type == 'Tikhonov':
-        dSfilt = S**2 / (S**2 + alpha) 
+      if not self.per_BC_pad:
+        if self.filt_type == 'Tikhonov':
+          dSfilt = S**2 / (S**2 + alpha) 
+        else:
+          dSfilt         = ones((self.nx, self.ny))
+          dSfilt[alpha:] = 0.0
+        x_filt = real(ifft2(dSfilt / S * UTb))
       else:
-        dSfilt         = ones((self.nx, self.ny))
-        dSfilt[alpha:] = 0.0
-      x_filt = real(ifft2(dSfilt / S * UTb))
-      
+        B = self.B
+        c = self.c
+        M = self.M
+        x0 = zeros(len(B))
+        x_filt, hist = cg(B, c, x0=x0, tol=1e-4, maxiter=250, M=M)
     return x_filt
   
   def get_ralpha(self, alpha, xalpha):

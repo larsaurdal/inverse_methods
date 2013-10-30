@@ -1,5 +1,5 @@
-from pylab          import *
-from scipy.linalg   import toeplitz
+from pylab                            import *
+from scipy.linalg                     import toeplitz
 
 def wacky_thing(t, h, sig):
   """

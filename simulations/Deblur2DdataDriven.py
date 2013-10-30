@@ -15,17 +15,19 @@ mpl.rcParams['legend.fontsize'] = 'medium'
 #  2d image deblurring inverse problem with separable kernel.
 #
 
-x_true = loadmat('../data/satellite.mat')['x_true']
-x_true = x_true / x_true.max()
+f_true = loadmat('../data/GaussianBlur440_normal.mat')['f_true']
+x_true = 100*f_true / f_true.max()
+nx,ny  = shape(x_true)
 
-sig        = 0.02
+sig        = 2.0 / nx
 PSF        = gaussian_PSF_2D
 err_lvl    = 2.0
 
 # range for plotting errors :
-s = Inverse_System_2D(sig, err_lvl, x_true, PSF, per_BC=True, per_t=0.5)
+s = Inverse_System_2D(sig, err_lvl, x_true, PSF, per_BC=True, per_t=0.5,
+                      per_BC_pad=True, restrict_dom=(100,228), cmap='Greys_r')
 
-rng = logspace(log10(1e-6), log10(10), 5000)
+rng = logspace(log10(1e-15), log10(10), 1000)
 s.set_filt_type('Tikhonov', rng)
 
 #===============================================================================
@@ -67,15 +69,16 @@ s.plot_filt(ax5, xfiltGCV,  a_min3, 'GCV')
 s.plot_filt(ax6, xfiltMSE,  a_min4, 'MSE')
 #s.plot_filt(ax5, xfiltMan,  a_man, 'manual')
 tight_layout()
-savefig(img_dir + 'prb38.png', dpi=300)
+savefig(img_dir + 'prb311.png', dpi=300)
 show()
 
 # plot all the errors on a loglog axis :
 fig = figure()
 ax  = fig.add_subplot(111)
 s.plot_all_errors(ax)
-savefig(img_dir + 'prb38_error.png', dpi=300)
+savefig(img_dir + 'prb311_error.png', dpi=300)
 show()
+
 
 
 

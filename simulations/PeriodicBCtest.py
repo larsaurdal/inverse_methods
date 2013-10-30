@@ -32,7 +32,7 @@ s.set_filt_type('Tikhonov', rng)
 
 #===============================================================================
 # plotting
-img_dir = '/home/pf4d/exmortis223@gmail.com/UM/2013 Autumn/M 514 - Inverse Methods/homework/05/doc/images/'
+img_dir = '/home/pf4d/exmortis223@gmail.com/2013 Autumn/M 514 - Inverse Methods/homework/05/doc/images/'
 
 fig = figure(figsize=(13,9))
 ax1 = fig.add_subplot(231)
@@ -65,18 +65,18 @@ xfiltMan  = s.get_xfilt(a_man)
 # plot both the solutions :
 s.plot_filt(ax3, xfiltUPRE, a_min1, 'UPRE')
 s.plot_filt(ax4, xfiltDP2,  a_min2, 'DP2')
-#s.plot_filt(ax5, xfiltGCV,  a_min3, 'GCV')
+s.plot_filt(ax5, xfiltGCV,  a_min3, 'GCV')
 s.plot_filt(ax6, xfiltMSE,  a_min4, 'MSE')
-s.plot_filt(ax5, xfiltMan,  a_man, 'manual')
+#s.plot_filt(ax5, xfiltMan,  a_man, 'manual')
 tight_layout()
-savefig(img_dir + 'prb38b.png', dpi=300)
+savefig(img_dir + 'prb311.png', dpi=300)
 show()
 
 # plot all the errors on a loglog axis :
 fig = figure()
 ax  = fig.add_subplot(111)
 s.plot_all_errors(ax)
-savefig(img_dir + 'prb38b_error.png', dpi=300)
+savefig(img_dir + 'prb311_error.png', dpi=300)
 show()
 
 
