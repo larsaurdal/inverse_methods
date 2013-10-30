@@ -76,20 +76,14 @@ class Inverse_System_2D(Inverse_System):
       # Set up true solution x_true and data b = A*x_true + error :
       l       = restrict_dom[0]
       r       = restrict_dom[1]
-      if l is not None and r is not None:
-        ml    = 0.5*(r - l)
-        mr    = 1.5*(r - l)
-      else:
-        ml    = 0
-        mr    = nx
       Ax      = real(ifft2(ahat * fft2(x_true)))
       Ax      = Ax[l:r, l:r]
       x_true  = x_true[l:r, l:r]
-      ahat    = ahat[ml:mr, ml:mr]
       nx2,ny2 = shape(Ax)
       nx2     = float(nx2)
       ny2     = float(ny2)
-      sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n)
+      n2      = nx2 * ny2
+      sigma   = err_lvl/100.0 * norm(Ax) / sqrt(n2)
       eta     = sigma * randn(nx2, ny2)
       b       = Ax + eta
       bhat    = fft2(b)
@@ -117,6 +111,13 @@ class Inverse_System_2D(Inverse_System):
         self.M    = M
       
       else:
+        if l is not None and r is not None:
+          ml = 0.5*(r - l)
+          mr = 1.5*(r - l)
+        else:
+          ml = 0
+          mr = nx
+        ahat  = ahat[ml:mr, ml:mr]
         UTb   = bhat
    
       S       = abs(ahat)
@@ -129,7 +130,7 @@ class Inverse_System_2D(Inverse_System):
     
     self.cmap        = cmap
     self.per_BC      = per_BC
-    self.per_BC_pad  = per_BC
+    self.per_BC_pad  = per_BC_pad
     self.rng         = arange(0, 1, 0.1)
     self.n           = n
     self.nx          = nx
