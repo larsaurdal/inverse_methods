@@ -19,6 +19,7 @@ from scipy.optimize import fminbound
 from Inverse_System import *
 from functions      import descritize_PSF_kernel as d_psf
 from functions      import descritize_integral   as d_int
+from scipy.sparse   import spdiags
 
 class Inverse_System_1D(Inverse_System):
 
@@ -47,7 +48,12 @@ class Inverse_System_1D(Inverse_System):
    
     U,S,V   = svd(A)
     UTb     = dot(U.T, b)
-    
+
+    # create regularization matrices for GMRF :
+    diags = [-ones(n+1), ones(n+1)]
+    D     = spdiags(diags, [0, 1], n, n).todense()
+    L     = dot(D.T, D)
+      
     # by default, filter by Tikhonov parameterization
     self.filt_type = 'Tikhonov'
     
@@ -68,6 +74,8 @@ class Inverse_System_1D(Inverse_System):
     self.V       = V
     self.Vx      = dot(V, x_true)
     self.UTb     = UTb
+    self.D       = D
+    self.L       = L
 
   def get_xfilt(self, alpha):
     """
@@ -76,12 +84,18 @@ class Inverse_System_1D(Inverse_System):
     S      = self.S
     V      = self.V
     UTb    = self.UTb
+    L      = self.L
+    A      = self.A
+    b      = self.b
     if self.filt_type == 'Tikhonov':
-      dSfilt = S**2 / (S**2 + alpha) 
-    else:
+      dSfilt = S**2 / (S**2 + alpha)
+      x_filt = dot(V.T, dSfilt / S * UTb)
+    elif self.filt_type == 'TSVD':
       dSfilt         = ones(self.n)
       dSfilt[alpha:] = 0.0
-    x_filt = dot(V.T, dSfilt / S * UTb)
+      x_filt         = dot(V.T, dSfilt / S * UTb)
+    elif self.filt_type == 'GMRF':
+      x_filt = solve( (dot(A.T, A) + alpha*L), dot(A.T, b) )
     return x_filt
 
   def get_ralpha(self, alpha, xalpha):
@@ -97,7 +111,7 @@ class Inverse_System_1D(Inverse_System):
     """
     plot the filtered solution.
     """
-    if self.filt_type == 'Tikhonov':
+    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF':
       st = tit + r' Filtered, $\alpha = %.2E$'
     elif self.filt_type == 'TSVD':
       st = tit + r' Filtered, $\alpha = %.f$ '

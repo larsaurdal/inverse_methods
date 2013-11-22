@@ -39,17 +39,20 @@ class Inverse_System(object):
     self.S       = None 
     self.V       = None 
     self.Vx      = None
-    self.UTb     = None 
+    self.UTb     = None
+    self.D       = None
+    self.L       = None 
   
   def set_filt_type(self, filt_type, rng=None):
-    if filt_type not in ['TSVD', 'Tikhonov']:
-      print 'please choose filt_type to be either "TSVD" or "Tikhonov".'
+    if filt_type not in ['TSVD', 'Tikhonov', 'GMRF']:
+      print 'please choose filt_type to be either' +\
+            ' "TSVD", "Tikhonov", or "GMRF".'
     else:
       if filt_type == 'TSVD': 
         self.rng = range(int(self.n))
-      else: 
+      elif filt_type == 'Tikhonov' or filt_type == 'GMRF': 
         if rng == None:
-          print "specify a range for Tikhonov regulariztion"
+          print "specify a range for Tikhonov or GMRF regulariztion"
           exit(1)
         else:
           self.rng = rng
@@ -68,6 +71,13 @@ class Inverse_System(object):
     dS2    = self.S**2 
     UTb    = self.UTb
     S      = self.S
+    L      = self.L
+    
+    if self.filt_type == 'Tikhonov':
+      phi_nu = S**2 / (dS2 + a)**3
+    elif self.filt_type == 'GMRF':
+      phi_nu = diag(a * L)
+      phi_nu = S**2 / (dS2 + a)**3
     
     xalpha = self.get_xfilt(a) 
     ralpha = self.get_ralpha(a, xalpha)
@@ -75,7 +85,7 @@ class Inverse_System(object):
     rho    = norm(ralpha)**2 
     
     # From Vogel 2002. 
-    xi_p   = sum(-2 * dS2 * UTb**2 / (dS2 + a)**3) 
+    xi_p   = sum(-2 * phi_nu * UTb**2) 
     calpha = - ( (rho*xi) * (a*rho + a**2 * xi) + (rho*xi)**2 / xi_p ) / \
                ( rho**2 + a**2 * xi**2)**(3/2.) 
     return calpha
@@ -86,14 +96,15 @@ class Inverse_System(object):
     """
     UTb   = self.UTb 
     sigma = self.sigma
+    L     = self.L
     if self.filt_type == 'TSVD':
       phi_nu     = ones(self.n)
       phi_nu[a:] = 0.0
-    
     elif self.filt_type == 'Tikhonov':
       dS2    = self.S**2
       phi_nu = dS2 / (dS2 + a)
-    
+    elif self.filt_type == 'GMRF':
+      phi_nu = diag(a * L)
     return sum( ((phi_nu - 1)*UTb)**2 + 2*sigma**2*phi_nu )
   
   def DP2(self, a):
@@ -103,14 +114,15 @@ class Inverse_System(object):
     n     = self.n
     UTb   = self.UTb 
     sigma = self.sigma
+    L     = self.L
     if self.filt_type == 'TSVD':
       phi_nu     = ones(self.n)
       phi_nu[a:] = 0.0
-    
     elif self.filt_type == 'Tikhonov':
       dS2    = self.S**2
       phi_nu = dS2 / (dS2 + a)
-    
+    elif self.filt_type == 'GMRF':
+      phi_nu = diag(a * L)
     return (sum( ((phi_nu - 1)*UTb)**2) - n*sigma**2)**2
   
   def GCV(self, a):
@@ -120,14 +132,15 @@ class Inverse_System(object):
     n     = self.n
     UTb   = self.UTb 
     sigma = self.sigma
+    L     = self.L
     if self.filt_type == 'TSVD':
       phi_nu     = ones(self.n)
       phi_nu[a:] = 0.0
-    
     elif self.filt_type == 'Tikhonov':
       dS2    = self.S**2
       phi_nu = dS2 / (dS2 + a)
-    
+    elif self.filt_type == 'GMRF':
+      phi_nu = diag(a * L)
     return sum( ((phi_nu - 1)*UTb)**2) / (n - sum(phi_nu))**2
   
   def MSE(self, a):
@@ -138,11 +151,14 @@ class Inverse_System(object):
     sigma  = self.sigma
     Vx     = self.Vx
     x_true = self.x_true
+    L      = self.L
     if self.filt_type == 'Tikhonov':
       dSfilt = S**2 / (S**2 + a)
-    else:
+    elif self.filt_type == 'TSVD':
       dSfilt     = ones(self.n)
       dSfilt[a:] = 0.0
+    elif self.filt_type == 'GMRF':
+      dSfilt = diag(a * L)
     return sigma**2 * sum((dSfilt / S)**2) + sum((1 - dSfilt)**2 * Vx**2)
   
   def relative_error(self, a):
@@ -152,11 +168,14 @@ class Inverse_System(object):
     S      = self.S
     UTb    = self.UTb
     x_true = self.x_true
+    L      = self.L
     if self.filt_type == 'Tikhonov':
       dSfilt = S**2 / (S**2 + a)
-    else:
+    elif self.filt_type == 'TSVD':
       dSfilt     = ones(self.n)
       dSfilt[a:] = 0.0
+    elif self.filt_type == 'GMRF':
+      dSfilt = diag(a * L)
     x_filt = self.get_xfilt(a) 
     return norm(x_filt - x_true) / norm(x_true)
   
@@ -202,7 +221,8 @@ class Inverse_System(object):
     s =   ' Enter 0 to enter k, 1 for UPRE, 2 for GCV, ' \
         + '3 for DP, or 4 for L-curve: '
     param_choice = int(raw_input(s))
-    
+    f_type       = self.filt_type    
+
     if param_choice == 0:
       alpha = float(raw_input('alpha = '))
       tit = 'k'
@@ -215,18 +235,18 @@ class Inverse_System(object):
     elif param_choice == 3:
       RegParam_fn = lambda a : self.DP2(a) 
       tit = 'DP'
-    elif param_choice == 4 and self.filt_type == 'Tikhonov':
+    elif param_choice == 4 and (f_type == 'Tikhonov' or f_type == 'GMRF'):
       RegParam_fn = lambda a : self.Lcurve(a)
       tit = 'L-curve'
-    elif param_choice == 4 and self.filt_type == 'TSVD':
+    elif param_choice == 4 and f_type == 'TSVD':
       print 'ERROR: cannot use L-curve with TSVD'
       exit(1)
    
     # only compute the alpha if you did not explicitly state it :
-    if self.filt_type == 'Tikhonov' and param_choice != 0: 
-      alpha = fminbound(RegParam_fn, xi, xf)
-    elif self.filt_type == 'TSVD' and param_choice != 0:
+    if f_type == 'TSVD' and param_choice != 0:
       alpha = fminbound(RegParam_fn, 0, self.n)
+    elif (f_type == 'Tikhonov' or f_type == 'GMRF') and param_choice != 0: 
+      alpha = fminbound(RegParam_fn, xi, xf)
     
     # Now compute the regularized solution for TSVD
     x_filt = self.get_xfilt(alpha)
@@ -248,7 +268,7 @@ class Inverse_System(object):
     # find index of minimum :
     rng  = self.rng
     
-    if self.filt_type == 'Tikhonov':
+    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF':
       ls    = '-'
       lab1  = r'' + err_tits[0] + ': %.2E'
       lab2  = r'' + err_tits[1] + ': %.2E'
@@ -283,7 +303,7 @@ class Inverse_System(object):
     """
     rng    = self.rng
 
-    if self.filt_type == 'Tikhonov':
+    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF':
       ls       = '-'
       fmt      = '.2E'
       errors   = [self.fs, self.MSEs, self.UPREs, 
