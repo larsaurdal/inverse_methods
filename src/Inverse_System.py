@@ -133,15 +133,22 @@ class Inverse_System(object):
     UTb   = self.UTb 
     sigma = self.sigma
     L     = self.L
+    A     = self.A
+    b     = self.b
     if self.filt_type == 'TSVD':
       phi_nu     = ones(self.n)
       phi_nu[a:] = 0.0
+      GCV        = sum( ((phi_nu - 1)*UTb)**2) / (n - sum(phi_nu))**2
     elif self.filt_type == 'Tikhonov':
-      dS2    = self.S**2
-      phi_nu = dS2 / (dS2 + a)
+      dS2        = self.S**2
+      phi_nu     = dS2 / (dS2 + a)
+      GCV        =  sum( ((phi_nu - 1)*UTb)**2) / (n - sum(phi_nu))**2
     elif self.filt_type == 'GMRF':
-      phi_nu = diag(a * L)
-    return sum( ((phi_nu - 1)*UTb)**2) / (n - sum(phi_nu))**2
+      ATA        = dot(A.T, A)
+      Aa         = dot(inv(ATA + a*L), A.T)
+      reg_mat    = dot(A, Aa)
+      GCV        = n * norm(dot(reg_mat, b) - b)**2 / (n - trace(reg_mat))**2
+    return GCV
   
   def MSE(self, a):
     """

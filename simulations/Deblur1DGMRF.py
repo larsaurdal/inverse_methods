@@ -48,13 +48,13 @@ s.calc_errors()
 
 # find index of minimum and corresponding alphas :
 idx1, a_min1 = s.find_min(s.fs)
-idx2, a_min2 = s.find_min(s.MSEs)
+idx2, a_min2 = s.find_min(s.GCVs)
 
 # plot the errors on the same axes :
-err_list = (s.fs,   s.MSEs)
+err_list = (s.fs,   s.GCVs)
 idxs     = (idx1,   idx2)
 alphas   = (a_min1, a_min2)
-tits     = ('relative', 'MSE')
+tits     = ('relative', 'GCV')
 s.plot_errors(ax3, err_list, alphas, idxs, tits)
 
 # Now compute the regularized solution for TSVD
