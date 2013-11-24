@@ -43,20 +43,22 @@ class Inverse_System(object):
     self.D       = None
     self.L       = None 
   
-  def set_filt_type(self, filt_type, rng=None):
-    if filt_type not in ['TSVD', 'Tikhonov', 'GMRF']:
+  def set_filt_type(self, filt_type, rng=None, igmrf_iter=100):
+    if filt_type not in ['TSVD', 'Tikhonov', 'GMRF', 'IGMRF']:
       print 'please choose filt_type to be either' +\
-            ' "TSVD", "Tikhonov", or "GMRF".'
+            ' "TSVD", "Tikhonov", "GMRF" or "IGMRF".'
     else:
       if filt_type == 'TSVD': 
         self.rng = range(int(self.n))
-      elif filt_type == 'Tikhonov' or filt_type == 'GMRF': 
+      elif filt_type == 'Tikhonov' or filt_type == 'GMRF' \
+                                   or filt_type == 'IGMRF': 
         if rng == None:
           print "specify a range for Tikhonov or GMRF regulariztion"
           exit(1)
         else:
           self.rng = rng
-      self.filt_type = filt_type
+      self.igmrf_iter = igmrf_iter
+      self.filt_type  = filt_type
   
   def get_xfilt(self, alpha):
     pass
@@ -76,7 +78,6 @@ class Inverse_System(object):
     if self.filt_type == 'Tikhonov':
       phi_nu = S**2 / (dS2 + a)**3
     elif self.filt_type == 'GMRF':
-      phi_nu = diag(a * L)
       phi_nu = S**2 / (dS2 + a)**3
     
     xalpha = self.get_xfilt(a) 
@@ -104,7 +105,11 @@ class Inverse_System(object):
       dS2    = self.S**2
       phi_nu = dS2 / (dS2 + a)
     elif self.filt_type == 'GMRF':
-      phi_nu = diag(a * L)
+      dS2    = self.S**2
+      phi_nu = dS2 / (dS2 + a)
+    elif self.filt_type == 'IGMRF':
+      dS2    = self.S**2
+      phi_nu = dS2 / (dS2 + a)
     return sum( ((phi_nu - 1)*UTb)**2 + 2*sigma**2*phi_nu )
   
   def DP2(self, a):
@@ -122,7 +127,11 @@ class Inverse_System(object):
       dS2    = self.S**2
       phi_nu = dS2 / (dS2 + a)
     elif self.filt_type == 'GMRF':
-      phi_nu = diag(a * L)
+      dS2    = self.S**2
+      phi_nu = dS2 / (dS2 + a)
+    elif self.filt_type == 'IGMRF':
+      dS2    = self.S**2
+      phi_nu = dS2 / (dS2 + a)
     return (sum( ((phi_nu - 1)*UTb)**2) - n*sigma**2)**2
   
   def GCV(self, a):
@@ -133,6 +142,7 @@ class Inverse_System(object):
     UTb   = self.UTb 
     sigma = self.sigma
     L     = self.L
+    D     = self.D
     A     = self.A
     b     = self.b
     if self.filt_type == 'TSVD':
@@ -144,6 +154,11 @@ class Inverse_System(object):
       phi_nu     = dS2 / (dS2 + a)
       GCV        =  sum( ((phi_nu - 1)*UTb)**2) / (n - sum(phi_nu))**2
     elif self.filt_type == 'GMRF':
+      ATA        = dot(A.T, A)
+      Aa         = dot(inv(ATA + a*L), A.T)
+      reg_mat    = dot(A, Aa)
+      GCV        = n * norm(dot(reg_mat, b) - b)**2 / (n - trace(reg_mat))**2
+    elif self.filt_type == 'IGMRF':
       ATA        = dot(A.T, A)
       Aa         = dot(inv(ATA + a*L), A.T)
       reg_mat    = dot(A, Aa)
@@ -165,7 +180,11 @@ class Inverse_System(object):
       dSfilt     = ones(self.n)
       dSfilt[a:] = 0.0
     elif self.filt_type == 'GMRF':
-      dSfilt = diag(a * L)
+      dSfilt     = ones(self.n)
+      dSfilt[a:] = 0.0
+    elif self.filt_type == 'IGMRF':
+      dS2    = self.S**2
+      phi_nu = dS2 / (dS2 + a)
     return sigma**2 * sum((dSfilt / S)**2) + sum((1 - dSfilt)**2 * Vx**2)
   
   def relative_error(self, a):
@@ -182,10 +201,21 @@ class Inverse_System(object):
       dSfilt     = ones(self.n)
       dSfilt[a:] = 0.0
     elif self.filt_type == 'GMRF':
-      dSfilt = diag(a * L)
+      dSfilt = S**2 / (S**2 + a)
+    elif self.filt_type == 'IGMRF':
+      dSfilt = S**2 / (S**2 + a)
     x_filt = self.get_xfilt(a) 
     return norm(x_filt - x_true) / norm(x_true)
   
+  def calc_error(self, reg_ftn):
+    """
+    calculate the errors over self.rng for regularization function <reg_ftn>.
+    """
+    err = array([])
+    for alpha in self.rng:
+      err = append(err,  reg_ftn(alpha))
+    return err
+
   def calc_errors(self):
     """
     calculate all the errors that we have available.
@@ -242,7 +272,8 @@ class Inverse_System(object):
     elif param_choice == 3:
       RegParam_fn = lambda a : self.DP2(a) 
       tit = 'DP'
-    elif param_choice == 4 and (f_type == 'Tikhonov' or f_type == 'GMRF'):
+    elif param_choice == 4 and (f_type == 'Tikhonov' or f_type == 'GMRF' \
+                                                     or f_type == 'IGMRF'):
       RegParam_fn = lambda a : self.Lcurve(a)
       tit = 'L-curve'
     elif param_choice == 4 and f_type == 'TSVD':
@@ -252,7 +283,8 @@ class Inverse_System(object):
     # only compute the alpha if you did not explicitly state it :
     if f_type == 'TSVD' and param_choice != 0:
       alpha = fminbound(RegParam_fn, 0, self.n)
-    elif (f_type == 'Tikhonov' or f_type == 'GMRF') and param_choice != 0: 
+    elif (f_type == 'Tikhonov' or f_type == 'GMRF' \
+                               or f_type == 'IGMRF') and param_choice != 0: 
       alpha = fminbound(RegParam_fn, xi, xf)
     
     # Now compute the regularized solution for TSVD
@@ -264,18 +296,42 @@ class Inverse_System(object):
     get the filtered x solution.
     """
     pass
+  
+  def plot_error(self, ax, err, alpha, idx, tit):
+    """
+    plot the error :
+    """
+    # find index of minimum :
+    rng  = self.rng
+    
+    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF' \
+                                    or self.filt_type == 'IGMRF':
+      lab  = r'' + tit + ': %.2E'
+      ax.loglog(rng, err, '-', lw=2.0, label=lab % alpha)
+      ax.loglog(alpha, err[idx], 'd', color='#3d0057', 
+                markersize=10, label=r'min{$\alpha$}')
+    elif self.filt_type == 'TSVD':
+      lab  = r'' + tit + ': %.f'
+      ax.semilogy(rng, err, 'o', lw=2.0, label=lab % alpha)
+      ax.semilogy(alpha, err[idx], 'd', color='#3d0057', 
+                  markersize=10, label=r'min{$\alpha$}')
+
+    ax.set_xlabel(r'$\alpha$')
+    ax.set_ylabel(r'ERROR$(\alpha)$')
+    ax.set_title(r'Error')
+    leg = ax.legend()
+    leg.get_frame().set_alpha(0.5)
+    ax.grid()
 
   def plot_errors(self, ax, err_list, alphas, idxs, err_tits):
     """
     plot the errors :
     """
-    fs   = self.fs
-    MSEs = self.MSEs
-
     # find index of minimum :
     rng  = self.rng
     
-    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF':
+    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF' \
+                                    or self.filt_type == 'IGMRF':
       ls    = '-'
       lab1  = r'' + err_tits[0] + ': %.2E'
       lab2  = r'' + err_tits[1] + ': %.2E'
@@ -310,7 +366,8 @@ class Inverse_System(object):
     """
     rng    = self.rng
 
-    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF':
+    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF' \
+                                    or self.filt_type == 'IGMRF':
       ls       = '-'
       fmt      = '.2E'
       errors   = [self.fs, self.MSEs, self.UPREs, 

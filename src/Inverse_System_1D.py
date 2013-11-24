@@ -51,7 +51,7 @@ class Inverse_System_1D(Inverse_System):
 
     # create regularization matrices for GMRF :
     diags = [-ones(n+1), ones(n+1)]
-    D     = spdiags(diags, [0, 1], n, n).todense()
+    D     = array(spdiags(diags, [0, 1], n-1, n).todense())
     L     = dot(D.T, D)
       
     # by default, filter by Tikhonov parameterization
@@ -87,6 +87,7 @@ class Inverse_System_1D(Inverse_System):
     L      = self.L
     A      = self.A
     b      = self.b
+    n      = self.n
     if self.filt_type == 'Tikhonov':
       dSfilt = S**2 / (S**2 + alpha)
       x_filt = dot(V.T, dSfilt / S * UTb)
@@ -96,7 +97,31 @@ class Inverse_System_1D(Inverse_System):
       x_filt         = dot(V.T, dSfilt / S * UTb)
     elif self.filt_type == 'GMRF':
       x_filt = solve( (dot(A.T, A) + alpha*L), dot(A.T, b) )
+    elif self.filt_type == 'IGMRF':
+      x_filt = solve( (dot(A.T, A) + alpha*L), dot(A.T, b) )
     return x_filt
+
+  def IGRMF_LD(self, reg_ftn):
+    """
+    Compute the Intrinsic GMRF filtered solution via Lagged-Diffusivity 
+    fixed point Iteration as edge-preserving MAP estimation using IGMRF priors.
+    """
+    A = self.A
+    b = self.b
+    D = self.D
+    L = self.L
+    err    = self.calc_error(reg_ftn)
+    idx    = where(err == min(err))[0][0]
+    alpha  = self.rng[idx]
+    x_filt = self.get_xfilt(alpha)
+    for i in range(self.igmrf_iter):
+      err    = self.calc_error(reg_ftn)
+      idx    = where(err == min(err))[0][0]
+      alpha  = self.rng[idx]
+      G      = diag(1/sqrt( dot(D,x_filt)**2 + 0.001 ))
+      self.L = dot(D.T, dot(G, D))
+      x_filt = self.get_xfilt(alpha)
+    return x_filt, err, alpha
 
   def get_ralpha(self, alpha, xalpha):
     """
@@ -111,7 +136,8 @@ class Inverse_System_1D(Inverse_System):
     """
     plot the filtered solution.
     """
-    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF':
+    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF' \
+                                    or self.filt_type == 'IGMRF':
       st = tit + r' Filtered, $\alpha = %.2E$'
     elif self.filt_type == 'TSVD':
       st = tit + r' Filtered, $\alpha = %.f$ '
@@ -132,7 +158,8 @@ class Inverse_System_1D(Inverse_System):
     """
     plot the filtered solution.
     """
-    if self.filt_type == 'Tikhonov':
+    if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF' \
+                                    or self.filt_type == 'IGMRF':
       st1 = tits[0] + r', $\alpha = %.2E$'
       st2 = tits[1] + r', $\alpha = %.2E$'
     elif self.filt_type == 'TSVD':
