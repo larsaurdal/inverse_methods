@@ -101,7 +101,7 @@ class Inverse_System_1D(Inverse_System):
       x_filt = solve( (dot(A.T, A) + alpha*L), dot(A.T, b) )
     return x_filt
 
-  def IGRMF_LD(self, reg_ftn):
+  def IGMRF_LD(self, reg_ftn):
     """
     Compute the Intrinsic GMRF filtered solution via Lagged-Diffusivity 
     fixed point Iteration as edge-preserving MAP estimation using IGMRF priors.
