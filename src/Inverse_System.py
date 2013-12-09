@@ -21,7 +21,7 @@ class Inverse_System(object):
 
   def __init__(self): 
     """
-    class representing a system we wish to invert.
+    Abstract class representing a system we wish to invert.
     """
     self.rng     = None 
     self.omega   = None 
@@ -44,6 +44,12 @@ class Inverse_System(object):
     self.L       = None 
   
   def set_filt_type(self, filt_type, rng=None, igmrf_iter=100):
+    """
+    Set the system's regularization type as <filt_type> and may be any of 
+    'TSVD', 'Tikhonov', 'GMRF', or 'IGMRF'.  <rng> is a range of values 
+    for which to evaluate the parameter selection method, while <igmrf_iter>
+    is the number of IGMRF iterations to perform (if <filt_type = 'IGMRF').
+    """
     if filt_type not in ['TSVD', 'Tikhonov', 'GMRF', 'IGMRF']:
       print 'please choose filt_type to be either' +\
             ' "TSVD", "Tikhonov", "GMRF" or "IGMRF".'
@@ -61,9 +67,15 @@ class Inverse_System(object):
       self.filt_type  = filt_type
   
   def get_xfilt(self, alpha):
+    """
+    return the x-filtered solution for <alpha>.
+    """
     pass
 
   def get_ralpha(self, alpha):
+    """
+    helper method for Lcurve below.
+    """
     pass
  
   def Lcurve(self, a):

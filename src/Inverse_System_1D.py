@@ -25,8 +25,18 @@ class Inverse_System_1D(Inverse_System):
 
   def __init__(self, xi, xf, n, sig, err_lvl, x_true_ftn, PSF, recon=False):
     """
-    class representing a system we wish to invert.
+    class representing a 1D system we wish to invert.
+    INPUT:
+      xi      - begin of domain.
+      xf      - end of domain.
+      n       - number of cells.
+      sig     - x_true_ftn parameter.
+      err_lvl - desired noise level (ratio of 100).
+      x_true  - function from functions.py representing the true solution.
+      PSF     - Point Spread Function for reconstruction problem
+      recon   - weather or not this is a PSF reconstruction problem. 
     """
+    super(Inverse_System_1D, self).__init__()
     n       = float(n)
     omega   = xf - xi
     h       = omega/n
@@ -79,7 +89,7 @@ class Inverse_System_1D(Inverse_System):
 
   def get_xfilt(self, alpha):
     """
-    get the filtered x solution.
+    get the filtered x solution for <alpha>.
     """
     S      = self.S
     V      = self.V
@@ -104,7 +114,13 @@ class Inverse_System_1D(Inverse_System):
   def IGMRF_LD(self, reg_ftn):
     """
     Compute the Intrinsic GMRF filtered solution via Lagged-Diffusivity 
-    fixed point Iteration as edge-preserving MAP estimation using IGMRF priors.
+    fixed point Iteration as edge-preserving MAP estimation using IGMRF 
+    priors using regularization function <reg_ftn>.
+
+    Returns:
+      x_filt - filtered solution.
+      err    - error of <reg_ftn>
+      alpha  - corresponding alpha for minimum err.
     """
     A = self.A
     b = self.b
@@ -125,7 +141,7 @@ class Inverse_System_1D(Inverse_System):
 
   def get_ralpha(self, alpha, xalpha):
     """
-    get r-alpha for L-curve.
+    get r-alpha for L-curve for corresponding <alpha> and x_alpha <xalpha>.
     """
     A = self.A
     b = self.b
@@ -134,7 +150,8 @@ class Inverse_System_1D(Inverse_System):
 
   def plot_filt(self, ax, x_filt, alpha, tit):
     """
-    plot the filtered solution.
+    plot the filtered solution <x_filt> to axes <ax> with optimal alpha
+    value <alpha> and title <tit>.
     """
     if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF' \
                                     or self.filt_type == 'IGMRF':
@@ -156,7 +173,8 @@ class Inverse_System_1D(Inverse_System):
   
   def plot_two_filt(self, ax, x_filts, alphas, tits):
     """
-    plot the filtered solution.
+    plot two filtered solutions list <x_filts> to axes <ax> with 
+    optimal alpha value list <alphas> and title list <tits>.
     """
     if self.filt_type == 'Tikhonov' or self.filt_type == 'GMRF' \
                                     or self.filt_type == 'IGMRF':
@@ -181,7 +199,7 @@ class Inverse_System_1D(Inverse_System):
   
   def plot_ls(self, ax):
     """
-    plot the least-squares solution.
+    plot the least-squares solution to axes <ax>.
     """
     t      = self.t
     x_true = self.x_true
@@ -198,7 +216,7 @@ class Inverse_System_1D(Inverse_System):
   
   def plot_true(self, ax):
     """
-    plot the true and blurred solution.
+    plot the true and blurred solution to axes <ax>.
     """
     t      = self.t
     x_true = self.x_true
@@ -215,7 +233,7 @@ class Inverse_System_1D(Inverse_System):
   
   def plot_U_vectors(self, ax):
     """
-    plot the first 8 orthogonal U vectors.
+    plot the first 8 orthogonal U vectors to axes <ax>.
     """
     U = self.U
     t = self.t
@@ -231,7 +249,7 @@ class Inverse_System_1D(Inverse_System):
 
   def plot_UTb_vectors(self, ax):
     """
-    plot the singular vectors UTb on a log y-axis.
+    plot the singular vectors UTb on a log y-axis <ax>.
     """
     U  = self.U
     S  = self.S
@@ -255,7 +273,7 @@ class Inverse_System_1D(Inverse_System):
 
   def plot_VTx_variance(self, ax):
     """
-    plot the variance values in V^T x_LS.
+    plot the variance values in V^T x_LS to axes <ax>.
     """
     V       = self.V
     A       = self.A
@@ -274,7 +292,7 @@ class Inverse_System_1D(Inverse_System):
 
   def plot_variance(self, ax):
     """
-    plot the variance values sigma^2 / sigma_i^2.
+    plot the variance values sigma^2 / sigma_i^2 to axes <ax>.
     """
     sigma = self.sigma
     S     = self.S

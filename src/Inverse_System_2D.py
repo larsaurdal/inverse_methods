@@ -29,8 +29,19 @@ class Inverse_System_2D(Inverse_System):
                restrict_dom=(None,None)):
     """
     class representing a system we wish to invert.
-    per_t : truncate amount (left, right, top, bottom).
+    INPUT:
+      sig          - x_true_ftn parameter.
+      err_lvl      - desired noise level (ratio of 100).
+      x_true       - function from functions.py representing the true solution.
+      PSF          - Point Spread Function.
+      recon        - weather or not this is a PSF reconstruction problem. 
+      cmap         - matplotlib colormap string name.
+      per_BC       - use periodic boundary condtions?
+      per_BC_pad   - pad the image to apply periodic BC without distortion?
+      per_t        - truncate amount (left, right, top, and bottom).
+      restrict_dom - 2-tuple index to restrict (left, right) = (top, bottom) 
     """
+    super(Inverse_System_2D, self).__init__()
     self.per_BC     = per_BC
     self.per_BC_pad = per_BC_pad
 
@@ -111,20 +122,6 @@ class Inverse_System_2D(Inverse_System):
         D     = pad(ones(shape(b)), p_d, 'constant')
         ATDb  = real(ifft2(conj(ahat) * fft2(b_pad)))
         UTb   = bphat
-
-        # Compute lambda A'*M*(A*x) + alpha L*x :
-        DA   = D * real(ifft2(ahat))
-        ATDA = real(ifft2(conj(ahat) * fft2(DA)))
-        B    = ATDA + alpha*ones(len(bphat))
-        c    = ATDb
-        ATA  = real(ifft2(conj(ahat) * real(ifft2(ahat))))
-        M    = ATA + alpha*ones(len(bphat))
-       
-        self.DA   = DA
-        self.ATDA = ATDA
-        self.B    = B
-        self.c    = c
-        self.M    = M
       
       else:
         if l is not None and r is not None:
@@ -135,6 +132,23 @@ class Inverse_System_2D(Inverse_System):
           mr = nx
         ahat  = ahat[ml:mr, ml:mr]
         UTb   = bhat
+        
+      # CG stuff (not implemented) :
+      """
+      # Compute lambda A'*M*(A*x) + alpha L*x :
+      DA   = D * real(ifft2(ahat))
+      ATDA = real(ifft2(conj(ahat) * fft2(DA)))
+      B    = ATDA + alpha*ones(len(bphat))
+      c    = ATDb
+      ATA  = real(ifft2(conj(ahat) * real(ifft2(ahat))))
+      M    = ATA + alpha*ones(len(bphat))
+      
+      self.DA   = DA
+      self.ATDA = ATDA
+      self.B    = B
+      self.c    = c
+      self.M    = M
+      """
    
       S       = abs(ahat)
       Vx      = fft2(x_true)
