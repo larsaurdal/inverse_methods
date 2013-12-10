@@ -119,10 +119,19 @@ class Inverse_System_2D(Inverse_System):
         p_d   = ((ny/4, ny/4), (nx/4, nx/4))
         b_pad = pad(b, p_d, 'constant')
         bphat = fft2(b_pad)
-        D     = pad(ones(shape(b)), p_d, 'constant')
+        DT    = pad(ones(ny2), (ny/4, ny/4), 'constant')
+        D     = pad(ones(nx2), (nx/4, nx/4), 'constant')
+        M     = tensordot(DT, D, 0) # mask array
         ATDb  = real(ifft2(conj(ahat) * fft2(b_pad)))
         UTb   = bphat
-      
+
+        self.D     = D
+        self.DT    = DT
+        self.M     = M
+        self.ATDb  = ATDb
+        self.bphat = bphat
+        self.b_pad = b_pad
+
       else:
         if l is not None and r is not None:
           ml = 0.5*(r - l)
@@ -133,23 +142,6 @@ class Inverse_System_2D(Inverse_System):
         ahat  = ahat[ml:mr, ml:mr]
         UTb   = bhat
         
-      # CG stuff (not implemented) :
-      """
-      # Compute lambda A'*M*(A*x) + alpha L*x :
-      DA   = D * real(ifft2(ahat))
-      ATDA = real(ifft2(conj(ahat) * fft2(DA)))
-      B    = ATDA + alpha*ones(len(bphat))
-      c    = ATDb
-      ATA  = real(ifft2(conj(ahat) * real(ifft2(ahat))))
-      M    = ATA + alpha*ones(len(bphat))
-      
-      self.DA   = DA
-      self.ATDA = ATDA
-      self.B    = B
-      self.c    = c
-      self.M    = M
-      """
-   
       S       = abs(ahat)
       Vx      = fft2(x_true)
 
@@ -176,7 +168,7 @@ class Inverse_System_2D(Inverse_System):
     self.UTb         = UTb
     self.Vx          = Vx
 
-  def get_xfilt(self, alpha):
+  def get_xfilt(self, alpha=None):
     """
     get the filtered x solution.
     """
@@ -195,16 +187,50 @@ class Inverse_System_2D(Inverse_System):
       if not self.per_BC_pad:
         if self.filt_type == 'Tikhonov':
           dSfilt = S**2 / (S**2 + alpha) 
+        elif self.filt_type == 'Landweber':
+          pass
         else:
           dSfilt         = ones((self.nx, self.ny))
           dSfilt[alpha:] = 0.0
         x_filt = real(ifft2(dSfilt / S * UTb))
       else:
-        B = self.B
-        c = self.c
-        M = self.M
-        x0 = zeros(len(B))
-        x_filt, hist = cg(B, c, x0=x0, tol=1e-4, maxiter=250, M=M)
+        if self.filt_type == 'Landweber':
+          ATDb  = self.ATDb
+          M     = self.M
+          ahat  = self.ahat
+          bphat = self.bphat
+          b     = self.b
+          sig   = self.sigma
+          tau   = self.tau
+
+          # conjugate gradient garbage :
+          #MA    = M * real(ifft2(ahat))
+          #ATMA  = real(ifft2(conj(ahat) * fft2(MA)))
+          #B     = ATMA + alpha*identity(len(ATMA))
+          #c     = ATDb
+          #ATA   = real(ifft2(conj(ahat) * real(ifft2(ahat))))
+          #prec  = ATA + alpha*identity(len(ATMA))
+          #nx,ny = shape(c)
+          #x0    = zeros(nx*ny)
+          #c     = reshape(c, nx*ny, order='F')
+          #x_filt, hist = cg(B, c, x0=x0, tol=1e-4, maxiter=250)
+          # Landweber iteration :
+          nx,ny = shape(ATDb)
+          x     = zeros(shape(ahat))
+          i     = 0
+          while i < 250:
+            i    += 1
+            dftx  = fft2(x)
+            MAx   = M * real(ifft2(ahat * dftx))
+            ATMAx = real(ifft2(conj(ahat) * fft2(MAx)))
+            x     = x - tau * (ATMAx - ATDb)
+            t     = norm(ATMAx - ATDb)**2 >= (nx * ny)**2 * sig
+            print norm(ATMAx - ATDb)**2
+          l = nx/4
+          r = nx*(1 - 1/4.0)
+          t = ny/4
+          b = ny*(1 - 1/4.0)
+          x_filt = x[l:r, t:b]
     return x_filt
   
   def get_ralpha(self, alpha, xalpha):
@@ -221,15 +247,19 @@ class Inverse_System_2D(Inverse_System):
       ralpha = real(ifft2(ahat*fft2(xalpha - b)))
     return ralpha
 
-  def plot_filt(self, ax, x_filt, alpha, tit):
+  def plot_filt(self, ax, x_filt, alpha, tit, tau=False):
     """
     plot the filtered solution.
     """
-    st      = tit + r' Filtered, $\alpha = %.2E$'
     im      = ax.imshow(x_filt, cmap=self.cmap)
     divider = make_axes_locatable(ax)
     cax     = divider.append_axes("right", size="5%", pad=0.05)
-    ax.set_title(st % alpha)
+    if tau:
+      st = r'Landweber Filtered, $\tau = %.2f$'
+      ax.set_title(st % self.tau)
+    else:
+      st = tit + r' Filtered, $\alpha = %.2E$'
+      ax.set_title(st % alpha)
     ax.axis('off')
     colorbar(im, cax=cax)
   

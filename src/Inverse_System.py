@@ -46,13 +46,14 @@ class Inverse_System(object):
   def set_filt_type(self, filt_type, rng=None, igmrf_iter=100):
     """
     Set the system's regularization type as <filt_type> and may be any of 
-    'TSVD', 'Tikhonov', 'GMRF', or 'IGMRF'.  <rng> is a range of values 
-    for which to evaluate the parameter selection method, while <igmrf_iter>
-    is the number of IGMRF iterations to perform (if <filt_type = 'IGMRF').
+    'TSVD', 'Tikhonov', 'Landweber', 'GMRF', or 'IGMRF'.  <rng> is a range 
+    of values for which to evaluate the parameter selection method, while 
+    <igmrf_iter> is the number of IGMRF iterations to perform (if <filt_type 
+    = 'IGMRF').
     """
-    if filt_type not in ['TSVD', 'Tikhonov', 'GMRF', 'IGMRF']:
+    if filt_type not in ['TSVD', 'Tikhonov', 'Landweber', 'GMRF', 'IGMRF']:
       print 'please choose filt_type to be either' +\
-            ' "TSVD", "Tikhonov", "GMRF" or "IGMRF".'
+            ' "TSVD", "Tikhonov", "Landweber", "GMRF" or "IGMRF".'
     else:
       if filt_type == 'TSVD': 
         self.rng = range(int(self.n))
@@ -63,8 +64,14 @@ class Inverse_System(object):
           exit(1)
         else:
           self.rng = rng
+      elif filt_type == 'Landweber':
+        if rng == None:
+          print "specify a tau for Landweber iteration"
+          exit(1)
+        else:
+          self.tau = rng
       self.igmrf_iter = igmrf_iter
-      self.filt_type  = filt_type
+      self.filt_type = filt_type
   
   def get_xfilt(self, alpha):
     """
