@@ -26,5 +26,5 @@ s.plot_b(ax2)
 
 # solve the problem :
 s.solve(ax3, rtol=1e00, plot_iterations=False)
-savefig('images/prb314.png', dpi=300)
+#savefig('images/prb314.png', dpi=300)
 show()

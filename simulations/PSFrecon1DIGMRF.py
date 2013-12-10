@@ -49,7 +49,7 @@ idx, a_min = s.find_min(err)
 s.plot_error(ax3, err, a_min, idx, 'GCV')
 
 tight_layout()
-savefig('prb410IGMRF.png', dpi=300)
+#savefig('prb410IGMRF.png', dpi=300)
 show()
 
 

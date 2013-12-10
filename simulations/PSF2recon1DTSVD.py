@@ -59,7 +59,7 @@ xfiltDP   = s.get_xfilt(a_min2)
 xfilts = (xfiltUPRE, xfiltDP)
 s.plot_two_filt(ax3, xfilts, alphas, tits)
 tight_layout()
-savefig(img_dir + 'prb29b.png', dpi=300)
+#savefig(img_dir + 'prb29b.png', dpi=300)
 show()
 
 # plot all the errors on a loglog axis :
@@ -67,7 +67,7 @@ fig = figure()
 ax  = fig.add_subplot(111)
 
 s.plot_all_errors(ax)
-savefig(img_dir + 'prb29b_error.png', dpi=300)
+#savefig(img_dir + 'prb29b_error.png', dpi=300)
 show()
 
 

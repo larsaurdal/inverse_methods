@@ -174,6 +174,7 @@ class Inverse_System_2D(Inverse_System):
     """
     S      = self.S
     UTb    = self.UTb
+    # if not periodic boundary conditions:
     if not self.per_BC:
       V1     = self.V1
       V2     = self.V2
@@ -183,7 +184,9 @@ class Inverse_System_2D(Inverse_System):
         dSfilt         = ones((self.nx, self.ny))
         dSfilt[alpha:] = 0.0
       x_filt = dot(V1.T, dot(dSfilt / S * UTb, V2))
+    # else periodic boundary :
     else:
+      # if we do not pad the image :
       if not self.per_BC_pad:
         if self.filt_type == 'Tikhonov':
           dSfilt = S**2 / (S**2 + alpha) 
@@ -193,6 +196,7 @@ class Inverse_System_2D(Inverse_System):
           dSfilt         = ones((self.nx, self.ny))
           dSfilt[alpha:] = 0.0
         x_filt = real(ifft2(dSfilt / S * UTb))
+      # else we pad :
       else:
         if self.filt_type == 'Landweber':
           ATDb  = self.ATDb
@@ -231,6 +235,12 @@ class Inverse_System_2D(Inverse_System):
           t = ny/4
           b = ny*(1 - 1/4.0)
           x_filt = x[l:r, t:b]
+        else:
+          B  = self.B
+          c  = self.c
+          M  = self.M
+          x0 = zeros(len(B))
+          x_filt, hist = cg(B, c, x0=x0, tol=1e-4, maxiter=250, M=M)
     return x_filt
   
   def get_ralpha(self, alpha, xalpha):

@@ -67,14 +67,14 @@ s.plot_filt(ax5, xfiltGCV,  a_min3, 'GCV')
 s.plot_filt(ax6, xfiltMSE,  a_min4, 'MSE')
 #s.plot_filt(ax5, xfiltMan,  a_man, 'manual')
 tight_layout()
-savefig(img_dir + 'prb38.png', dpi=300)
+#savefig(img_dir + 'prb38.png', dpi=300)
 show()
 
 # plot all the errors on a loglog axis :
 fig = figure()
 ax  = fig.add_subplot(111)
 s.plot_all_errors(ax)
-savefig(img_dir + 'prb38_error.png', dpi=300)
+#savefig(img_dir + 'prb38_error.png', dpi=300)
 show()
 
 
